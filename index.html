@@ -355,7 +355,6 @@
         </div>
     </div>
 
-
     <!-- Firebase SDK e Lógica da Aplicação -->
     <script type="module">
         // 1. Importar as bibliotecas do Firebase
@@ -524,77 +523,910 @@
                 switchPage('dashboard-page');
                 listenForFirebaseData();
                 seedInitialData();
-            }
 
-            // --- FUNÇÕES GLOBAIS ---
-            // (Todo o resto do código da aplicação)
-            function switchPage(pageId) {
-                pages.forEach(p => p.classList.add('hidden'));
-                document.getElementById(pageId).classList.remove('hidden');
-                sidebarNav.querySelectorAll('a').forEach(link => {
-                    link.classList.remove('bg-slate-900', 'font-semibold');
-                    link.classList.add('hover:bg-slate-700');
-                    if (link.getAttribute('href') === `#${pageId.replace('-page', '')}`) {
-                        link.classList.add('bg-slate-900', 'font-semibold');
-                        link.classList.remove('hover:bg-slate-700');
+                // (O resto do código JavaScript completo vai aqui)
+
+                function switchPage(pageId) {
+                    pages.forEach(p => p.classList.add('hidden'));
+                    document.getElementById(pageId).classList.remove('hidden');
+                    sidebarNav.querySelectorAll('a').forEach(link => {
+                        link.classList.remove('bg-slate-900', 'font-semibold');
+                        link.classList.add('hover:bg-slate-700');
+                        if (link.getAttribute('href') === `#${pageId.replace('-page', '')}`) {
+                            link.classList.add('bg-slate-900', 'font-semibold');
+                            link.classList.remove('hover:bg-slate-700');
+                        }
+                    });
+                }
+                
+                // --- Lógica do Dashboard ---
+                function updateDashboard() {
+                    dashboardTotalCidadaos.textContent = allCidadaos.length;
+                    dashboardTotalDemandas.textContent = allDemandas.length;
+                    renderAniversariantesDoMes();
+                    renderDemandasRecentes();
+                    renderCidadaosPorTipoChart();
+                    renderDemandasPorStatusChart();
+                }
+                function renderAniversariantesDoMes() {
+                    const today = new Date();
+                    const currentMonth = today.getMonth();
+                    const aniversariantes = allCidadaos
+                        .filter(c => {
+                            if (!c.dob) return false;
+                            const birthDate = new Date(c.dob);
+                            return birthDate.getUTCMonth() === currentMonth;
+                        })
+                        .sort((a, b) => new Date(a.dob).getUTCDate() - new Date(b.dob).getUTCDate());
+                    
+                    aniversariantesList.innerHTML = '';
+                    if (aniversariantes.length === 0) {
+                        aniversariantesList.innerHTML = '<p class="text-gray-500 text-sm">Nenhum aniversariante este mês.</p>';
+                    } else {
+                        aniversariantes.forEach(c => {
+                            const birthDate = new Date(c.dob);
+                            const day = String(birthDate.getUTCDate()).padStart(2, '0');
+                            const el = document.createElement('div');
+                            el.className = 'aniversariante-item flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 cursor-pointer';
+                            el.dataset.id = c.id;
+                            el.innerHTML = `<span class="font-medium text-gray-700 pointer-events-none">${c.name}</span><span class="font-bold text-blue-600 pointer-events-none">${day}</span>`;
+                            aniversariantesList.appendChild(el);
+                        });
+                    }
+                }
+                aniversariantesList.addEventListener('click', (e) => {
+                    const item = e.target.closest('.aniversariante-item');
+                    if (item) {
+                        openCidadaoDetailsModal(item.dataset.id);
                     }
                 });
-            }
+                function renderDemandasRecentes() {
+                    demandasRecentesList.innerHTML = '';
+                    const recentDemandas = allDemandas.slice(0, 5);
 
-            // --- Lógica do Dashboard ---
-            function updateDashboard() {
-                dashboardTotalCidadaos.textContent = allCidadaos.length;
-                dashboardTotalDemandas.textContent = allDemandas.length;
-                renderAniversariantesDoMes();
-                renderDemandasRecentes();
-                renderCidadaosPorTipoChart();
-                renderDemandasPorStatusChart();
-            }
-
-            // ... (restante do código das funções do dashboard)
-
-            // --- Lógica de Cidadãos ---
-            // ... (restante do código das funções de cidadãos)
-            
-            // --- Lógica de Demandas ---
-            // ... (restante do código das funções de demandas)
-            
-            // --- Lógica do Mapa ---
-            // ... (restante do código das funções do mapa)
-            
-            // --- Geração de Relatório ---
-            // ... (código da função de gerar relatório)
-
-            // --- Inicialização ---
-            function listenForFirebaseData() {
-                // ... (código da função de listen)
-            }
-
-            async function seedInitialData() {
-                // ... (código da função de seed)
-            }
-
-            function showToast(message, type = 'success') {
-                const toastContainer = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = 'p-4 rounded-lg shadow-lg text-white flex items-center gap-3 opacity-0 transform translate-x-10 transition-all duration-300';
-                let icon = '';
-                if (type === 'success') {
-                    toast.classList.add('bg-green-500');
-                    icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
-                } else if (type === 'error') {
-                    toast.classList.add('bg-red-500');
-                    icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
-                } else {
-                    toast.classList.add('bg-blue-500');
-                    icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                    if (recentDemandas.length === 0) {
+                         demandasRecentesList.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma demanda recente.</p>';
+                    } else {
+                        recentDemandas.forEach(demanda => {
+                            const cidadao = allCidadaos.find(c => c.id === demanda.cidadaoId);
+                            const el = document.createElement('div');
+                            el.className = 'p-2 rounded-lg hover:bg-gray-100';
+                            el.innerHTML = `
+                                <p class="font-semibold text-gray-800 truncate">${demanda.title}</p>
+                                <p class="text-sm text-gray-500">Para: ${cidadao ? cidadao.name : 'Desconhecido'}</p>
+                            `;
+                            demandasRecentesList.appendChild(el);
+                        });
+                    }
                 }
-                toast.innerHTML = `${icon}<span>${message}</span>`;
-                toastContainer.appendChild(toast);
-                setTimeout(() => { toast.classList.remove('opacity-0', 'translate-x-10'); }, 10);
-                setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-10'); toast.addEventListener('transitionend', () => toast.remove()); }, 3000);
+                function renderCidadaosPorTipoChart() {
+                    const ctx = document.getElementById('cidadaos-por-tipo-chart').getContext('2d');
+                    const typeCounts = allCidadaos.reduce((acc, c) => { acc[c.type] = (acc[c.type] || 0) + 1; return acc; }, {});
+                    
+                    if (cidadaosChart) cidadaosChart.destroy();
+                    cidadaosChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(typeCounts),
+                            datasets: [{
+                                data: Object.values(typeCounts),
+                                backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#f97316'],
+                            }]
+                        },
+                        options: { responsive: true, plugins: { legend: { position: 'top' } } }
+                    });
+                }
+                function renderDemandasPorStatusChart() {
+                    const ctx = document.getElementById('demandas-por-status-chart').getContext('2d');
+                    const statusCounts = allDemandas.reduce((acc, d) => {
+                        const status = d.status || 'pending';
+                        acc[status] = (acc[status] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    if (demandasChart) demandasChart.destroy();
+                    demandasChart = new Chart(ctx, {
+                        type: 'bar', data: {
+                            labels: ['Status das Demandas'],
+                            datasets: [
+                                { label: 'Pendentes', data: [statusCounts['pending'] || 0], backgroundColor: '#f59e0b' },
+                                { label: 'Em Andamento', data: [statusCounts['inprogress'] || 0], backgroundColor: '#3b82f6' },
+                                { label: 'Concluídas', data: [statusCounts['completed'] || 0], backgroundColor: '#22c55e' }
+                            ]
+                        }, options: { responsive: true, indexAxis: 'y', scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+                    });
+                }
+
+                // --- Lógica de Cidadãos ---
+                function renderCidadaos() {
+                    let filteredCidadaos = [...allCidadaos];
+
+                    const searchTerm = searchInput.value.toLowerCase();
+                    if (searchTerm) {
+                        filteredCidadaos = filteredCidadaos.filter(c => 
+                            c.name.toLowerCase().includes(searchTerm) || 
+                            c.email.toLowerCase().includes(searchTerm) || 
+                            (c.cpf && c.cpf.includes(searchTerm))
+                        );
+                    }
+                    
+                    const type = filterType.value;
+                    if (type) {
+                        filteredCidadaos = filteredCidadaos.filter(c => c.type === type);
+                    }
+
+                    const bairro = filterBairro.value;
+                    if (bairro) {
+                        filteredCidadaos = filteredCidadaos.filter(c => c.address && c.address.bairro === bairro);
+                    }
+
+                    const leaderId = filterLeader.value;
+                    if (leaderId) {
+                        filteredCidadaos = filteredCidadaos.filter(c => c.leaderId === leaderId);
+                    }
+
+                    if (filteredCidadaos.length === 0) {
+                        cidadaosGrid.innerHTML = `<p class="text-slate-500 col-span-full text-center mt-8">Nenhum cidadão encontrado com os filtros aplicados.</p>`;
+                        return;
+                    }
+
+                    cidadaosGrid.innerHTML = filteredCidadaos.map(cidadao => {
+                        const photoElement = cidadao.photo 
+                            ? `<img src="${cidadao.photo}" class="w-24 h-24 object-cover rounded-full" alt="Foto de ${cidadao.name}">` 
+                            : `<div class="w-24 h-24 ${cidadao.color || 'bg-gray-500'} rounded-full flex items-center justify-center text-white text-3xl font-bold">${cidadao.initials || '??'}</div>`;
+
+                        return `
+                            <div data-id="${cidadao.id}" class="cidadao-card bg-white rounded-lg p-5 shadow-sm text-center flex flex-col items-center transition-transform transform hover:-translate-y-1 cursor-pointer">
+                                <div class="relative w-24 h-24 mb-4 pointer-events-none">
+                                    ${photoElement}
+                                    <div class="absolute -top-1 -right-1 flex flex-col gap-1 pointer-events-auto">
+                                        <button data-id="${cidadao.id}" class="edit-cidadao-btn bg-gray-600 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-700 p-1.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
+                                        </button>
+                                        <button data-id="${cidadao.id}" class="delete-cidadao-btn bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-600 text-xl font-bold">&times;</button>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800 pointer-events-none">${cidadao.name}</h3>
+                                <p class="text-gray-500 pointer-events-none">${cidadao.type}</p>
+                                <p class="text-xs text-gray-400 mt-2 truncate w-full pointer-events-none" title="${cidadao.phone || ''}">${cidadao.phone || 'Sem contato'}</p>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                [searchInput, filterType, filterBairro, filterLeader].forEach(el => el.addEventListener('input', renderCidadaos));
+                clearFiltersBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    filterType.value = '';
+                    filterBairro.value = '';
+                    filterLeader.value = '';
+                    renderCidadaos();
+                });
+                function populateFilterDropdowns() {
+                    const bairros = [...new Set(allCidadaos.map(c => c.address?.bairro).filter(Boolean))].sort();
+                    const currentBairro = filterBairro.value;
+                    filterBairro.innerHTML = '<option value="">Filtrar por Bairro</option>';
+                    bairros.forEach(bairro => {
+                        const option = document.createElement('option');
+                        option.value = bairro;
+                        option.textContent = bairro;
+                        filterBairro.appendChild(option);
+                    });
+                    filterBairro.value = currentBairro;
+
+                    const currentLeader = filterLeader.value;
+                    filterLeader.innerHTML = '<option value="">Filtrar por Liderança</option>';
+                    allLeaders.forEach(leader => {
+                        const option = document.createElement('option');
+                        option.value = leader.id;
+                        option.textContent = leader.name;
+                        filterLeader.appendChild(option);
+                    });
+                    filterLeader.value = currentLeader;
+                }
+                
+                // --- Lógica do Modal de Cidadãos ---
+                function openCidadaoModal(cidadaoId = null) {
+                    editingCidadaoId = cidadaoId;
+                    populateLeadersDropdown(true); 
+                    if (editingCidadaoId) {
+                        const cidadao = allCidadaos.find(c => c.id === editingCidadaoId);
+                        cidadaoModalTitle.textContent = "Editar Cidadão";
+                        document.getElementById('cidadao-name').value = cidadao.name;
+                        document.getElementById('cidadao-email').value = cidadao.email;
+                        document.getElementById('cidadao-dob').value = cidadao.dob || '';
+                        document.getElementById('cidadao-type').value = cidadao.type;
+                        document.getElementById('cidadao-leader').value = cidadao.leaderId || '';
+                        document.getElementById('cidadao-cpf').value = cidadao.cpf || '';
+                        document.getElementById('cidadao-rg').value = cidadao.rg || '';
+                        document.getElementById('cidadao-voterid').value = cidadao.voterId || '';
+                        document.getElementById('cidadao-phone').value = cidadao.phone || '';
+                        document.getElementById('cidadao-whatsapp').checked = cidadao.hasWhatsApp || false;
+                        document.getElementById('cidadao-profissao').value = cidadao.profissao || '';
+                        document.getElementById('cidadao-local-trabalho').value = cidadao.localTrabalho || '';
+                        
+                        if(cidadao.address) {
+                            document.getElementById('cidadao-cep').value = cidadao.address.cep || '';
+                            document.getElementById('cidadao-logradouro').value = cidadao.address.logradouro || '';
+                            document.getElementById('cidadao-numero').value = cidadao.address.numero || '';
+                            document.getElementById('cidadao-complemento').value = cidadao.address.complemento || '';
+                            document.getElementById('cidadao-bairro').value = cidadao.address.bairro || '';
+                            document.getElementById('cidadao-cidade').value = cidadao.address.cidade || '';
+                            document.getElementById('cidadao-estado').value = cidadao.address.estado || '';
+                        }
+
+                        sonsInput.value = cidadao.sons || 0;
+                        daughtersInput.value = cidadao.daughters || 0;
+                        renderChildrenFields();
+                         if (cidadao.children && cidadao.children.length > 0) {
+                            const fieldsets = childrenContainer.querySelectorAll('fieldset');
+                            fieldsets.forEach((fieldset, index) => {
+                                if(cidadao.children[index]) {
+                                    fieldset.querySelector('.child-detail-name').value = cidadao.children[index].name || '';
+                                    fieldset.querySelector('.child-detail-cpf').value = cidadao.children[index].cpf || '';
+                                    fieldset.querySelector('.child-detail-dob').value = cidadao.children[index].dob || '';
+                                }
+                            });
+                        }
+                        document.getElementById('cidadao-photo-url').value = cidadao.photo && cidadao.photo.startsWith('http') ? cidadao.photo : '';
+                    } else {
+                        cidadaoModalTitle.textContent = "Adicionar Novo Cidadão";
+                    }
+                    cidadaoModal.classList.remove('hidden');
+                    setTimeout(() => document.getElementById('modal-content').classList.remove('scale-95', 'opacity-0'), 10);
+                }
+
+                function closeCidadaoModal() {
+                    document.getElementById('modal-content').classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        cidadaoModal.classList.add('hidden');
+                        cidadaoForm.reset();
+                        childrenContainer.innerHTML = '';
+                        document.getElementById('file-name-display').textContent = 'Nenhum ficheiro selecionado';
+                        editingCidadaoId = null;
+                    }, 300);
+                }
+                addCidadaoBtn.addEventListener('click', () => openCidadaoModal());
+                closeModalBtn.addEventListener('click', closeCidadaoModal);
+                cancelBtn.addEventListener('click', closeCidadaoModal);
+                
+                cidadaosGrid.addEventListener('click', (e) => {
+                    const card = e.target.closest('.cidadao-card');
+                    const editBtn = e.target.closest('.edit-cidadao-btn');
+                    const deleteBtn = e.target.closest('.delete-cidadao-btn');
+                    
+                    if (editBtn) {
+                        openCidadaoModal(editBtn.dataset.id);
+                    } else if (deleteBtn) {
+                        openConfirmationModal(deleteBtn.dataset.id, 'cidadao');
+                    } else if (card) {
+                        openCidadaoDetailsModal(card.dataset.id);
+                    }
+                });
+                
+                closeDetailsModalBtn.addEventListener('click', closeCidadaoDetailsModal);
+
+                document.getElementById('cidadao-cep').addEventListener('blur', async (e) => {
+                    const cep = e.target.value.replace(/\D/g, '');
+                    if (cep.length !== 8) return;
+                    try {
+                        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                        const data = await response.json();
+                        if (data.erro) { showToast('CEP não encontrado.', 'error'); return; }
+                        document.getElementById('cidadao-logradouro').value = data.logradouro;
+                        document.getElementById('cidadao-bairro').value = data.bairro;
+                        document.getElementById('cidadao-cidade').value = data.localidade;
+                        document.getElementById('cidadao-estado').value = data.uf;
+                        document.getElementById('cidadao-numero').focus();
+                    } catch (error) { console.error('Erro ao buscar CEP:', error); showToast('Erro ao consultar o CEP.', 'error'); }
+                });
+
+                function renderChildrenFields() {
+                    childrenContainer.innerHTML = '';
+                    const sonsCount = parseInt(sonsInput.value) || 0;
+                    const daughtersCount = parseInt(daughtersInput.value) || 0;
+                    if (sonsCount === 0 && daughtersCount === 0) return;
+
+                    const header = document.createElement('h3');
+                    header.className = 'text-lg font-semibold text-gray-800 border-t pt-4';
+                    header.textContent = 'Detalhes dos Filhos e Filhas';
+                    childrenContainer.appendChild(header);
+
+                    for (let i = 1; i <= sonsCount; i++) childrenContainer.appendChild(createChildFieldset(i, 'Filho'));
+                    for (let i = 1; i <= daughtersCount; i++) childrenContainer.appendChild(createChildFieldset(i, 'Filha'));
+                }
+                function createChildFieldset(index, type) {
+                    const fieldset = document.createElement('fieldset');
+                    fieldset.className = 'border p-3 rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2';
+                    fieldset.innerHTML = `
+                        <legend class="px-2 font-medium text-sm">${type} ${index}</legend>
+                        <div><label class="block text-xs font-medium text-gray-600">Nome</label><input type="text" class="child-detail-name w-full border border-gray-300 p-2 rounded-lg mt-1" required></div>
+                        <div><label class="block text-xs font-medium text-gray-600">CPF</label><input type="text" class="child-detail-cpf w-full border border-gray-300 p-2 rounded-lg mt-1" placeholder="000.000.000-00"></div>
+                        <div><label class="block text-xs font-medium text-gray-600">Data de Nasc.</label><input type="date" class="child-detail-dob w-full border border-gray-300 p-2 rounded-lg mt-1"></div>
+                    `;
+                    return fieldset;
+                }
+                sonsInput.addEventListener('input', renderChildrenFields);
+                daughtersInput.addEventListener('input', renderChildrenFields);
+                const maskpatterns = { 'cidadao-cpf': '000.000.000-00', 'cidadao-cep': '00000-000', 'cidadao-phone': '(00) 00000-0000', 'cidadao-voterid': '0000 0000 0000' };
+                function applyMask(e) {
+                    const { id, value } = e.target;
+                    let pattern = maskpatterns[id];
+                     if (!pattern && e.target.classList.contains('child-detail-cpf')) { pattern = '000.000.000-00'; }
+                    if (!pattern) return;
+                    const numericValue = value.replace(/\D/g, '');
+                    let formattedValue = ''; let valueIndex = 0;
+                    for (let i = 0; i < pattern.length && valueIndex < numericValue.length; i++) { formattedValue += pattern[i] === '0' ? numericValue[valueIndex++] : pattern[i]; }
+                    e.target.value = formattedValue;
+                }
+                ['cidadao-cpf', 'cidadao-cep', 'cidadao-phone', 'cidadao-voterid'].forEach(id => document.getElementById(id).addEventListener('input', applyMask));
+                childrenContainer.addEventListener('input', applyMask);
+                document.getElementById('cidadao-photo-upload').addEventListener('change', (e) => {
+                    const fileName = e.target.files.length > 0 ? e.target.files[0].name : 'Nenhum ficheiro selecionado';
+                    document.getElementById('file-name-display').textContent = fileName;
+                     if (e.target.files.length > 0) document.getElementById('cidadao-photo-url').value = '';
+                });
+
+                function populateLeadersDropdown(isForm = false) {
+                    const select = isForm ? leaderSelect : filterLeader;
+                    const currentVal = select.value;
+                    select.innerHTML = `<option value="">${isForm ? 'Nenhuma' : 'Filtrar por Liderança'}</option>`;
+                    allLeaders.forEach(leader => {
+                        const option = document.createElement('option');
+                        option.value = leader.id;
+                        option.textContent = leader.name;
+                        select.appendChild(option);
+                    });
+                    select.value = currentVal;
+                }
+
+                cidadaoForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const cpf = document.getElementById('cidadao-cpf').value;
+                    const voterId = document.getElementById('cidadao-voterid').value;
+
+                    if (cpf || voterId) {
+                        const queries = [];
+                        if (cpf) queries.push(getDocs(query(cidadaosCollection, where("cpf", "==", cpf))));
+                        if (voterId) queries.push(getDocs(query(cidadaosCollection, where("voterId", "==", voterId))));
+
+                        const results = await Promise.all(queries);
+                        let duplicateDoc = null;
+                        let duplicateField = '';
+
+                        // Check CPF results
+                        if (results[0] && !results[0].empty) {
+                            results[0].forEach(doc => { if (doc.id !== editingCidadaoId) { duplicateDoc = doc; duplicateField = 'CPF'; } });
+                        }
+
+                        // Check Voter ID results if no CPF duplicate was found
+                        if (!duplicateDoc && results[cpf ? 1 : 0] && !results[cpf ? 1 : 0].empty) {
+                             results[cpf ? 1 : 0].forEach(doc => { if (doc.id !== editingCidadaoId) { duplicateDoc = doc; duplicateField = 'Título de Eleitor'; } });
+                        }
+
+                        if (duplicateDoc) {
+                            const duplicateData = duplicateDoc.data();
+                            const leader = allLeaders.find(l => l.id === duplicateData.leaderId);
+                            const leaderName = leader ? leader.name : 'não informada';
+                            showToast(`${duplicateField} já cadastrado. Indicado pela liderança: ${leaderName}.`, 'error');
+                            return;
+                        }
+                    }
+                    
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<div class="spinner"></div><span>A Salvar...</span>';
+
+                    const childrenData = [];
+                    document.querySelectorAll('#children-details-container fieldset').forEach(fieldset => {
+                        childrenData.push({
+                            name: fieldset.querySelector('.child-detail-name').value,
+                            cpf: fieldset.querySelector('.child-detail-cpf').value,
+                            dob: fieldset.querySelector('.child-detail-dob').value
+                        });
+                    });
+
+                    const fullAddress = `${document.getElementById('cidadao-logradouro').value}, ${document.getElementById('cidadao-numero').value}, ${document.getElementById('cidadao-bairro').value}, ${document.getElementById('cidadao-cidade').value} - ${document.getElementById('cidadao-estado').value}`;
+                    const coords = await geocodeAddress(fullAddress);
+                    
+                    const cidadaoData = {
+                        name: document.getElementById('cidadao-name').value, email: document.getElementById('cidadao-email').value, dob: document.getElementById('cidadao-dob').value,
+                        type: document.getElementById('cidadao-type').value, cpf: cpf, rg: document.getElementById('cidadao-rg').value,
+                        voterId: voterId, phone: document.getElementById('cidadao-phone').value,
+                        hasWhatsApp: document.getElementById('cidadao-whatsapp').checked, 
+                        profissao: document.getElementById('cidadao-profissao').value,
+                        localTrabalho: document.getElementById('cidadao-local-trabalho').value,
+                        address: {
+                            cep: document.getElementById('cidadao-cep').value, logradouro: document.getElementById('cidadao-logradouro').value,
+                            numero: document.getElementById('cidadao-numero').value, complemento: document.getElementById('cidadao-complemento').value,
+                            bairro: document.getElementById('cidadao-bairro').value, cidade: document.getElementById('cidadao-cidade').value,
+                            estado: document.getElementById('cidadao-estado').value,
+                        },
+                        lat: coords?.lat || null, lon: coords?.lon || null,
+                        leaderId: document.getElementById('cidadao-leader').value,
+                        sons: parseInt(sonsInput.value) || 0, daughters: parseInt(daughtersInput.value) || 0, children: childrenData,
+                        initials: document.getElementById('cidadao-name').value.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                    };
+                    
+                    const photoFile = document.getElementById('cidadao-photo-upload').files[0];
+                    const photoUrl = document.getElementById('cidadao-photo-url').value;
+
+                    if (photoFile) {
+                        cidadaoData.photo = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => resolve(e.target.result);
+                            reader.readAsDataURL(photoFile);
+                        });
+                    } else if (photoUrl) {
+                        cidadaoData.photo = photoUrl;
+                    } else if (!editingCidadaoId) {
+                         cidadaoData.color = ['bg-purple-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'][Math.floor(Math.random() * 4)];
+                    } else {
+                        const existingCidadao = allCidadaos.find(c => c.id === editingCidadaoId);
+                        cidadaoData.photo = existingCidadao ? (existingCidadao.photo || null) : null;
+                        cidadaoData.color = existingCidadao ? (existingCidadao.color || null) : null;
+                    }
+
+                    try {
+                        if (editingCidadaoId) {
+                            const docRef = doc(db, "cidadaos", editingCidadaoId);
+                            await updateDoc(docRef, cidadaoData);
+                            showToast('Cidadão atualizado com sucesso!');
+                        } else {
+                            await addDoc(cidadaosCollection, cidadaoData);
+                            showToast('Cidadão adicionado com sucesso!');
+                        }
+                        closeCidadaoModal();
+                    } catch (error) { console.error("Erro ao salvar cidadão: ", error); showToast('Erro ao salvar cidadão.', 'error'); }
+
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = 'Salvar';
+                });
+                
+                // --- Lógica de Demandas ---
+                function renderAllDemandas() {
+                    let filteredDemandas = [...allDemandas];
+                    const status = demandaFilterStatus.value;
+                    if (status) {
+                        filteredDemandas = filteredDemandas.filter(d => d.status === status);
+                    }
+                    const leaderId = demandaFilterLeader.value;
+                    if (leaderId) {
+                        const groupMemberIds = allCidadaos.filter(c => c.leaderId === leaderId).map(c => c.id);
+                        groupMemberIds.push(leaderId);
+                        filteredDemandas = filteredDemandas.filter(d => groupMemberIds.includes(d.cidadaoId));
+                    }
+                    allDemandasList.innerHTML = '';
+                    if (filteredDemandas.length === 0) {
+                        allDemandasList.innerHTML = '<p class="text-slate-500 text-center mt-8">Nenhuma demanda encontrada com os filtros aplicados.</p>';
+                        return;
+                    }
+                    const statusMap = { pending: "Pendente", inprogress: "Em Andamento", completed: "Concluída" };
+                    const statusClassMap = { pending: "status-pending", inprogress: "status-inprogress", completed: "status-completed" };
+                    filteredDemandas.forEach(demanda => {
+                        const cidadao = allCidadaos.find(c => c.id === demanda.cidadaoId);
+                        const leader = allLeaders.find(l => l.id === cidadao?.leaderId);
+                        const item = document.createElement('div');
+                        item.dataset.id = demanda.id;
+                        item.className = 'bg-white p-4 rounded-lg shadow-sm flex justify-between items-center cursor-pointer hover:shadow-md';
+                        item.innerHTML = `
+                            <div>
+                                <h4 class="font-bold text-lg text-gray-800">${demanda.title}</h4>
+                                <p class="text-sm text-gray-500">Solicitante: ${cidadao ? cidadao.name : 'Desconhecido'} ${leader ? `(Grupo de ${leader.name})` : ''}</p>
+                            </div>
+                            <span class="status-badge ${statusClassMap[demanda.status]}">${statusMap[demanda.status]}</span>
+                        `;
+                        allDemandasList.appendChild(item);
+                    });
+                }
+                [demandaFilterStatus, demandaFilterLeader].forEach(el => el.addEventListener('input', renderAllDemandas));
+                demandaClearFiltersBtn.addEventListener('click', () => {
+                    demandaFilterStatus.value = '';
+                    demandaFilterLeader.value = '';
+                    renderAllDemandas();
+                });
+                function openNewDemandaModal() {
+                    demandaForm.reset();
+                    demandaFormCidadaoSelect.innerHTML = '<option value="" disabled selected>Selecione um cidadão...</option>';
+                    allCidadaos.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.id;
+                        option.textContent = c.name;
+                        demandaFormCidadaoSelect.appendChild(option);
+                    });
+                    demandaModal.classList.remove('hidden');
+                }
+                addDemandaGeralBtn.addEventListener('click', openNewDemandaModal);
+                allDemandasList.addEventListener('click', (e) => {
+                    const item = e.target.closest('div[data-id]');
+                    if (item) {
+                        openDemandaDetailsModal(item.dataset.id);
+                    }
+                });
+                closeDemandaModalBtn.addEventListener('click', () => demandaModal.classList.add('hidden'));
+                cancelDemandaBtn.addEventListener('click', () => demandaModal.classList.add('hidden'));
+                demandaForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const title = document.getElementById('demanda-title').value;
+                    const description = document.getElementById('demanda-description').value;
+                    const cidadaoId = demandaFormCidadaoSelect.value;
+                    if (!cidadaoId) {
+                        showToast('Por favor, selecione um cidadão.', 'error');
+                        return;
+                    }
+                    await addDoc(demandasCollection, {
+                        title, description, cidadaoId,
+                        status: 'pending', createdAt: serverTimestamp()
+                    });
+                    showToast('Demanda adicionada com sucesso!');
+                    demandaForm.reset();
+                    demandaModal.classList.add('hidden');
+                });
+                
+                async function openDemandaDetailsModal(demandaId) {
+                    viewingDemandaId = demandaId;
+                    const demanda = allDemandas.find(d => d.id === demandaId);
+                    const cidadao = allCidadaos.find(c => c.id === demanda.cidadaoId);
+                    detailsDemandaTitle.textContent = demanda.title;
+                    detailsDemandaCidadao.textContent = `Para: ${cidadao ? cidadao.name : 'Desconhecido'}`;
+                    detailsDemandaDescription.textContent = demanda.description || 'Sem descrição.';
+                    detailsDemandaStatus.value = demanda.status;
+                    if (notesUnsubscribe) notesUnsubscribe();
+                    const notesCollection = collection(db, "demandas", demandaId, "notes");
+                    notesUnsubscribe = onSnapshot(query(notesCollection, orderBy("createdAt", "asc")), (snapshot) => {
+                        demandaNotesList.innerHTML = '';
+                        if(snapshot.empty) { demandaNotesList.innerHTML = `<p class="text-sm text-gray-500">Nenhum acompanhamento adicionado.</p>`; return; }
+                        snapshot.docs.forEach(doc => {
+                            const note = doc.data();
+                            const noteEl = document.createElement('div');
+                            noteEl.className = 'bg-gray-100 p-3 rounded-lg';
+                            const noteDate = note.createdAt ? note.createdAt.toDate().toLocaleString('pt-BR') : 'A guardar...';
+                            noteEl.innerHTML = `<p class="text-sm text-gray-800">${note.text}</p><p class="text-xs text-gray-500 text-right mt-1">${noteDate}</p>`;
+                            demandaNotesList.appendChild(noteEl);
+                        });
+                    });
+                    demandaDetailsModal.classList.remove('hidden');
+                }
+                function closeDemandaDetailsModal() {
+                    if (notesUnsubscribe) notesUnsubscribe();
+                    viewingDemandaId = null;
+                    demandaDetailsModal.classList.add('hidden');
+                }
+                closeDemandaDetailsBtn.addEventListener('click', closeDemandaDetailsModal);
+                detailsDemandaStatus.addEventListener('change', async (e) => {
+                    if (viewingDemandaId) {
+                        await updateDoc(doc(db, "demandas", viewingDemandaId), { status: e.target.value });
+                        showToast('Status da demanda atualizado!', 'info');
+                    }
+                });
+                addNoteForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const text = newNoteText.value.trim();
+                    if (!viewingDemandaId || !text) return;
+                    const notesCollection = collection(db, "demandas", viewingDemandaId, "notes");
+                    await addDoc(notesCollection, { text, createdAt: serverTimestamp() });
+                    addNoteForm.reset();
+                });
+
+                // --- Lógica de Exclusão (Genérica) ---
+                function openConfirmationModal(id, type) {
+                    itemToDelete = { id, type };
+                    confirmationTitle.textContent = `Confirmar Exclusão de ${type === 'cidadao' ? 'Cidadão' : 'Demanda'}`;
+                    confirmationMessage.textContent = `Você tem certeza? Esta ação não pode ser desfeita.${type === 'cidadao' ? ' Todas as demandas associadas também serão excluídas.' : ''}`;
+                    confirmationModal.classList.remove('hidden');
+                }
+                cancelDeleteBtn.addEventListener('click', () => confirmationModal.classList.add('hidden'));
+                confirmDeleteBtn.addEventListener('click', async () => {
+                    if (!itemToDelete.id) return;
+                    const { id, type } = itemToDelete;
+                    const batch = writeBatch(db);
+
+                    if (type === 'cidadao') {
+                        const demandsQuery = query(demandasCollection, where("cidadaoId", "==", id));
+                        const demandsSnapshot = await getDocs(demandsQuery);
+                        demandsSnapshot.forEach(d => batch.delete(d.ref));
+                        batch.delete(doc(db, "cidadaos", id));
+                    } else if (type === 'demanda') {
+                        const notesCollection = collection(db, "demandas", id, "notes");
+                        const notesSnapshot = await getDocs(notesCollection);
+                        notesSnapshot.forEach(d => batch.delete(d.ref));
+                        batch.delete(doc(db, "demandas", id));
+                        closeDemandaDetailsModal();
+                    }
+                    
+                    await batch.commit();
+                    showToast(`${type === 'cidadao' ? 'Cidadão' : 'Demanda'} excluído(a) com sucesso.`, 'error');
+                    confirmationModal.classList.add('hidden');
+                });
+                
+                deleteDemandaBtn.addEventListener('click', () => {
+                    if (viewingDemandaId) {
+                        openConfirmationModal(viewingDemandaId, 'demanda');
+                    }
+                });
+
+                // --- Lógica do Modal de Detalhes do Cidadão ---
+                function openCidadaoDetailsModal(cidadaoId) {
+                    viewingCidadaoId = cidadaoId;
+                    const cidadao = allCidadaos.find(c => c.id === cidadaoId);
+                    if (!cidadao) return;
+
+                    const photoEl = document.getElementById('details-photo');
+                    photoEl.innerHTML = cidadao.photo 
+                        ? `<img src="${cidadao.photo}" class="w-24 h-24 object-cover rounded-full" alt="Foto de ${cidadao.name}">`
+                        : `<div class="w-24 h-24 ${cidadao.color || 'bg-gray-500'} rounded-full flex items-center justify-center text-white text-4xl font-bold">${cidadao.initials || '??'}</div>`;
+
+                    document.getElementById('details-name').textContent = cidadao.name;
+                    document.getElementById('details-type').textContent = cidadao.type;
+                    document.getElementById('details-email').textContent = cidadao.email || 'N/A';
+                    document.getElementById('details-phone').textContent = cidadao.phone || 'N/A';
+                    
+                    const addr = cidadao.address;
+                    const fullAddress = addr ? `${addr.logradouro || ''}, ${addr.numero || 'S/N'}<br>${addr.bairro || ''}, ${addr.cidade || ''} - ${addr.estado || ''}` : 'N/A';
+                    document.getElementById('details-address').innerHTML = fullAddress;
+                    
+                    document.getElementById('details-cpf').textContent = cidadao.cpf || 'N/A';
+                    document.getElementById('details-rg').textContent = cidadao.rg || 'N/A';
+                    document.getElementById('details-voterid').textContent = cidadao.voterId || 'N/A';
+                    document.getElementById('details-profissao').textContent = cidadao.profissao || 'N/A';
+                    document.getElementById('details-local-trabalho').textContent = cidadao.localTrabalho || 'N/A';
+
+                    const dob = cidadao.dob ? new Date(cidadao.dob).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+                    document.getElementById('details-dob').textContent = dob;
+
+                    const leader = allLeaders.find(l => l.id === cidadao.leaderId);
+                    document.getElementById('details-leader').textContent = leader ? leader.name : 'Nenhuma';
+
+                    const childrenDetailsEl = document.getElementById('details-children');
+                    childrenDetailsEl.innerHTML = '';
+                    if(cidadao.children && cidadao.children.length > 0) {
+                         childrenDetailsEl.innerHTML = '<h4 class="font-semibold text-gray-500 text-sm mt-2">FILHOS/FILHAS</h4>' + cidadao.children.map(child => `<p class="text-sm">${child.name || 'Nome não informado'} (${child.dob ? new Date(child.dob).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 's/ data'})</p>`).join('');
+                    }
+
+                    cidadaoDetailsModal.classList.remove('hidden');
+                    setTimeout(() => cidadaoDetailsModal.querySelector('.transform').classList.remove('scale-95', 'opacity-0'), 10);
+                }
+
+                function closeCidadaoDetailsModal() {
+                     cidadaoDetailsModal.querySelector('.transform').classList.add('scale-95', 'opacity-0');
+                     setTimeout(() => {
+                        cidadaoDetailsModal.classList.add('hidden');
+                        viewingCidadaoId = null;
+                     }, 300);
+                }
+                closeDetailsModalBtn.addEventListener('click', closeCidadaoDetailsModal);
+
+                detailsViewMapBtn.addEventListener('click', () => {
+                    const cidadao = allCidadaos.find(c => c.id === viewingCidadaoId);
+                    if (cidadao && cidadao.lat && cidadao.lon) {
+                        closeCidadaoDetailsModal();
+                        mapModal.classList.remove('hidden');
+                        initializeMap();
+                        setTimeout(() => { 
+                            map.invalidateSize();
+                            map.setView([cidadao.lat, cidadao.lon], 16);
+                            L.marker([cidadao.lat, cidadao.lon]).addTo(map).bindPopup(`<b>${cidadao.name}</b>`).openPopup();
+                        }, 10);
+                    } else {
+                        showToast('Este cidadão não possui localização cadastrada.', 'error');
+                    }
+                });
+
+                detailsShareLocationBtn.addEventListener('click', () => {
+                    const cidadao = allCidadaos.find(c => c.id === viewingCidadaoId);
+                    if(cidadao && cidadao.lat && cidadao.lon) {
+                        const url = `https://www.google.com/maps?q=${cidadao.lat},${cidadao.lon}`;
+                        navigator.clipboard.writeText(url).then(() => {
+                            showToast('Link da localização copiado!');
+                        }).catch(() => {
+                            showToast('Erro ao copiar o link.', 'error');
+                        });
+                    } else {
+                         showToast('Este cidadão não possui localização cadastrada.', 'error');
+                    }
+                });
+
+
+                // --- Lógica do Mapa ---
+                async function geocodeAddress(address) {
+                     if (!address || address.trim().length < 10) return null;
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+                        if (!response.ok) return null;
+                        const data = await response.json();
+                        return (data && data.length > 0) ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : null;
+                    } catch (error) { console.error("Erro na geocodificação:", error); return null; }
+                }
+                function initializeMap() {
+                    if (map) return;
+                    map = L.map('map').setView([-14.235, -51.9253], 4);
+                    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
+                    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '&copy; Esri' });
+                    const baseMaps = { "Ruas": streets, "Satélite": satellite };
+                    streets.addTo(map);
+                    L.control.layers(baseMaps).addTo(map);
+                }
+                function populateMap() {
+                    markers.forEach(marker => map.removeLayer(marker));
+                    markers = [];
+                    const cidadaosWithLocation = allCidadaos.filter(c => c.lat && c.lon);
+                    if (cidadaosWithLocation.length === 0) { showToast("Nenhum cidadão com endereço para exibir.", "info"); return; }
+                    cidadaosWithLocation.forEach(cidadao => {
+                        const marker = L.marker([cidadao.lat, cidadao.lon]).addTo(map).bindPopup(`<b>${cidadao.name}</b><br>${cidadao.type}`);
+                        markers.push(marker);
+                    });
+                    if(markers.length > 0) { const group = new L.featureGroup(markers); map.fitBounds(group.getBounds().pad(0.2)); }
+                }
+                viewMapBtn.addEventListener('click', () => {
+                    mapModal.classList.remove('hidden');
+                    initializeMap();
+                    setTimeout(() => { map.invalidateSize(); populateMap(); }, 10);
+                });
+                closeMapBtn.addEventListener('click', () => mapModal.classList.add('hidden'));
+
+                // --- Geração de Relatório ---
+                function generateReport() {
+                    let filteredCidadaos = [...allCidadaos];
+                    const searchTerm = searchInput.value.toLowerCase();
+                    if (searchTerm) { filteredCidadaos = filteredCidadaos.filter(c => c.name.toLowerCase().includes(searchTerm) || c.email.toLowerCase().includes(searchTerm) || (c.cpf && c.cpf.includes(searchTerm)));}
+                    const type = filterType.value;
+                    if (type) { filteredCidadaos = filteredCidadaos.filter(c => c.type === type); }
+                    const bairro = filterBairro.value;
+                    if (bairro) { filteredCidadaos = filteredCidadaos.filter(c => c.address && c.address.bairro === bairro); }
+                    const leaderId = filterLeader.value;
+                    if (leaderId) { filteredCidadaos = filteredCidadaos.filter(c => c.leaderId === leaderId); }
+
+                    if (filteredCidadaos.length === 0) {
+                        showToast('Nenhum dado para gerar relatório com os filtros atuais.', 'error');
+                        return;
+                    }
+
+                    const reportWindow = window.open('', '_blank');
+                    const filtersApplied = [
+                        searchTerm ? `Busca: "${searchTerm}"` : '',
+                        type ? `Tipo: "${type}"` : '',
+                        bairro ? `Bairro: "${bairro}"` : '',
+                        leaderId ? `Liderança: "${allLeaders.find(l => l.id === leaderId)?.name}"` : ''
+                    ].filter(Boolean).join('; ');
+
+                    let reportHTML = `
+                        <html>
+                            <head>
+                                <title>Relatório de Cidadãos</title>
+                                <script src="https://cdn.tailwindcss.com"><\/script>
+                                <style> @media print { body { -webkit-print-color-adjust: exact; } #print-button { display: none; } } </style>
+                            </head>
+                            <body class="p-8 font-sans">
+                                <div class="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h1 class="text-3xl font-bold">Relatório de Cidadãos</h1>
+                                        <p class="text-gray-600">Gerado em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</p>
+                                        ${filtersApplied ? `<p class="text-sm text-gray-500 mt-2"><b>Filtros Aplicados:</b> ${filtersApplied}</p>` : ''}
+                                    </div>
+                                    <button id="print-button" onclick="window.print()" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Imprimir</button>
+                                </div>
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-200">
+                                            <th class="p-3 border">Nome</th>
+                                            <th class="p-3 border">Tipo</th>
+                                            <th class="p-3 border">Profissão</th>
+                                            <th class="p-3 border">Telefone</th>
+                                            <th class="p-3 border">Bairro</th>
+                                            <th class="p-3 border">Liderança</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+
+                    filteredCidadaos.forEach(c => {
+                        const leader = allLeaders.find(l => l.id === c.leaderId);
+                        reportHTML += `
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-3 border">${c.name}</td>
+                                <td class="p-3 border">${c.type}</td>
+                                <td class="p-3 border">${c.profissao || 'N/A'}</td>
+                                <td class="p-3 border">${c.phone || 'N/A'}</td>
+                                <td class="p-3 border">${c.address?.bairro || 'N/A'}</td>
+                                <td class="p-3 border">${leader?.name || 'Nenhuma'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    reportHTML += `
+                                    </tbody>
+                                </table>
+                                <p class="text-right text-gray-700 mt-4">Total de Cidadãos: <b>${filteredCidadaos.length}</b></p>
+                            </body>
+                        </html>
+                    `;
+
+                    reportWindow.document.write(reportHTML);
+                    reportWindow.document.close();
+                }
+
+                generateReportBtn.addEventListener('click', generateReport);
+
+                // --- Inicialização da Aplicação ---
+                function listenForFirebaseData() {
+                    onSnapshot(query(cidadaosCollection, orderBy("name")), (snapshot) => {
+                        allCidadaos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        allLeaders = allCidadaos.filter(c => c.type === 'Liderança');
+                        renderCidadaos();
+                        populateFilterDropdowns();
+                        updateDashboard();
+                    });
+                    onSnapshot(query(demandasCollection, orderBy("createdAt", "desc")), (snapshot) => {
+                        allDemandas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderAllDemandas();
+                        updateDashboard();
+                    });
+                }
+
+                async function seedInitialData() {
+                    const snapshot = await getDocs(cidadaosCollection);
+                    if (!snapshot.empty) return;
+
+                    showToast('Base de dados vazia. A adicionar dados de exemplo...', 'info');
+                    
+                    const sampleLeaders = [
+                        { name: "João da Silva", email: "joao.silva.leader@example.com", type: "Liderança", profissao: "Empresário", address: { logradouro: "Avenida Princesa Isabel", numero: "123", bairro: "Central", cidade: "Santana", estado: "AP", cep: "68925-059" } },
+                        { name: "Maria Oliveira", email: "maria.oliveira.leader@example.com", type: "Liderança", profissao: "Professora", address: { logradouro: "Rua Adálvaro Cavalcante", numero: "456", bairro: "Paraíso", cidade: "Santana", estado: "AP", cep: "68928-043" } }
+                    ];
+
+                    const leaderDocs = [];
+                    for (const leader of sampleLeaders) {
+                        const fullAddress = `${leader.address.logradouro}, ${leader.address.numero}, ${leader.address.bairro}, ${leader.address.cidade} - ${leader.address.estado}`;
+                        const coords = await geocodeAddress(fullAddress);
+                        const docRef = doc(cidadaosCollection);
+                        leaderDocs.push({ ref: docRef, data: { ...leader, lat: coords?.lat || null, lon: coords?.lon || null, initials: leader.name.split(' ').map(n=>n[0]).join('').substring(0,2) }});
+                    }
+
+                    const batch = writeBatch(db);
+                    leaderDocs.forEach(ld => batch.set(ld.ref, ld.data));
+                    
+                    const leaderIds = leaderDocs.map(ld => ld.ref.id);
+
+                    const sampleCidadaos = [
+                        { name: "Carlos Pereira", email: "carlos.p@example.com", type: "Apoiador", dob: "1988-05-20", leaderId: leaderIds[0], cpf: "111.222.333-44", phone: "(96) 99111-1111", profissao: "Motorista", address: { logradouro: "Avenida 15 de Novembro", numero: "789", bairro: "Central", cidade: "Santana", estado: "AP", cep: "68925-065"} },
+                        { name: "Ana Costa", email: "ana.costa@example.com", type: "Eleitor", dob: "1995-02-10", leaderId: leaderIds[1], cpf: "222.333.444-55", phone: "(96) 99222-2222", profissao: "Enfermeira", address: { logradouro: "Rua Cláudio Lúcio Monteiro", numero: "101", bairro: "Paraíso", cidade: "Santana", estado: "AP", cep: "68925-153"} },
+                        { name: "Pedro Souza", email: "pedro.souza@example.com", type: "Apoiador", dob: "1990-11-30", leaderId: leaderIds[0], cpf: "333.444.555-66", phone: "(96) 99333-3333", profissao: "Comerciante", address: { logradouro: "Avenida Santana", numero: "212", bairro: "Comercial", cidade: "Santana", estado: "AP", cep: "68925-077"} },
+                        { name: "Juliana Santos", email: "juliana.s@example.com", type: "Eleitor", dob: "2000-08-15", leaderId: leaderIds[1], cpf: "444.555.666-77", phone: "(96) 99444-4444", profissao: "Estudante", address: { logradouro: "Rua Salvador Diniz", numero: "345", bairro: "Nova Brasília", cidade: "Santana", estado: "AP", cep: "68927-013"} },
+                        { name: "Marcos Andrade", email: "marcos.a@example.com", type: "Apoiador", dob: "1985-01-25", leaderId: leaderIds[0], cpf: "555.666.777-88", phone: "(96) 99555-5555", profissao: "Advogado", address: { logradouro: "Avenida Castelo Branco", numero: "567", bairro: "Remédios", cidade: "Santana", estado: "AP", cep: "68928-115"} },
+                        { name: "Fernanda Lima", email: "fernanda.lima@example.com", type: "Eleitor", dob: "1998-07-07", leaderId: leaderIds[1], cpf: "666.777.888-99", phone: "(96) 99666-6666", profissao: "Servidora Pública", address: { logradouro: "Travessa Manoel de Souza", numero: "890", bairro: "Igarapé da Fortaleza", cidade: "Santana", estado: "AP", cep: "68926-114"} }
+                    ];
+
+                    for (const cidadao of sampleCidadaos) {
+                        const fullAddress = `${cidadao.address.logradouro}, ${cidadao.address.numero}, ${cidadao.address.bairro}, ${cidadao.address.cidade} - ${cidadao.address.estado}`;
+                        const coords = await geocodeAddress(fullAddress);
+                        const docRef = doc(cidadaosCollection);
+                        batch.set(docRef, { ...cidadao, lat: coords?.lat || null, lon: coords?.lon || null, initials: cidadao.name.split(' ').map(n=>n[0]).join('').substring(0,2), color: ['bg-purple-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'][Math.floor(Math.random() * 4)] });
+                    }
+                    await batch.commit();
+                    showToast('Dados de exemplo foram carregados.', 'info');
+                }
             }
         });
+
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'p-4 rounded-lg shadow-lg text-white flex items-center gap-3 opacity-0 transform translate-x-10 transition-all duration-300';
+            let icon = '';
+            if (type === 'success') {
+                toast.classList.add('bg-green-500');
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-500');
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+            } else {
+                toast.classList.add('bg-blue-500');
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            }
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('opacity-0', 'translate-x-10'); }, 10);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-10'); toast.addEventListener('transitionend', () => toast.remove()); }, 3000);
+        }
     </script>
 </body>
 </html>
