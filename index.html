@@ -19,6 +19,10 @@
             height: 16px;
             animation: spin 1s linear infinite;
         }
+        .loading-spinner {
+             border: 4px solid rgba(0,0,0,0.1);
+             border-top: 4px solid #3498db;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
         #map { height: 100%; width: 100%; }
@@ -26,21 +30,28 @@
         .status-pending { background-color: #fef9c3; color: #ca8a04; }
         .status-inprogress { background-color: #dbeafe; color: #2563eb; }
         .status-completed { background-color: #dcfce7; color: #16a34a; }
+        /* Adicionando transições suaves aos modais */
+        .modal-transition { transition: opacity 300ms ease-in-out, transform 300ms ease-in-out; }
     </style>
 </head>
 <body class="bg-slate-100">
 
     <div id="toast-container" class="fixed top-5 right-5 z-[1000] space-y-2"></div>
 
+    <!-- Indicador de Carregamento Global -->
+    <div id="global-loader" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-[9999]">
+        <div class="loading-spinner w-16 h-16 rounded-full animate-spin"></div>
+    </div>
+
     <!-- Tela de Login -->
-    <div id="login-page" class="flex items-center justify-center h-screen bg-gray-200">
+    <div id="login-page" class="flex items-center justify-center h-screen bg-gray-200 hidden">
         <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
             <div class="text-center">
                  <div class="mx-auto w-16 h-16 flex items-end gap-1">
-                    <div class="w-1/3 h-1/2 bg-sky-400 rounded-sm"></div>
-                    <div class="w-1/3 h-full bg-sky-500 rounded-sm"></div>
-                    <div class="w-1/3 h-1/3 bg-sky-600 rounded-sm"></div>
-                </div>
+                     <div class="w-1/3 h-1/2 bg-sky-400 rounded-sm"></div>
+                     <div class="w-1/3 h-full bg-sky-500 rounded-sm"></div>
+                     <div class="w-1/3 h-1/3 bg-sky-600 rounded-sm"></div>
+                 </div>
                 <h2 class="mt-6 text-3xl font-bold text-gray-900">
                     GESTOR VALENTE
                 </h2>
@@ -84,6 +95,7 @@
                     <li><a href="#dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 font-semibold"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>Dashboard</a></li>
                     <li><a href="#cidadaos" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Cidadãos</a></li>
                     <li><a href="#demandas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Demandas</a></li>
+                    <li id="users-nav-link" class="hidden"><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
                 </ul>
             </nav>
             <div class="p-4 mt-auto border-t border-slate-700">
@@ -113,7 +125,7 @@
             
             <main id="cidadaos-page" class="page hidden flex-1 flex-col h-screen overflow-y-auto">
                  <header class="bg-white p-6 border-b space-y-4">
-                    <div class="flex justify-between items-center gap-4">
+                    <div class="flex justify-between items-center gap-4 flex-wrap">
                         <div><h1 class="text-2xl font-bold text-gray-800">Gestão de Cidadãos</h1><p class="text-gray-600">Adicione, filtre e gerencie seus contatos na nuvem.</p></div>
                         <div class="flex items-center gap-4">
                              <button id="generate-report-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Gerar Relatório</button>
@@ -134,7 +146,7 @@
 
             <main id="demandas-page" class="page hidden flex-1 flex-col h-screen overflow-y-auto">
                 <header class="bg-white p-6 border-b space-y-4">
-                     <div class="flex justify-between items-center gap-4">
+                     <div class="flex justify-between items-center gap-4 flex-wrap">
                         <div><h1 class="text-2xl font-bold text-gray-800">Central de Demandas</h1><p class="text-gray-600">Visualize e gerencie todas as solicitações.</p></div>
                         <button id="add-demanda-geral-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">Adicionar Nova Demanda</button>
                     </div>
@@ -146,11 +158,34 @@
                 </header>
                 <div id="all-demandas-list" class="flex-1 p-6 space-y-3"></div>
             </main>
+
+            <main id="utilizadores-page" class="page hidden flex-1 flex-col h-screen overflow-y-auto">
+                <header class="bg-white p-6 border-b flex justify-between items-center flex-wrap">
+                    <div><h1 class="text-2xl font-bold text-gray-800">Gestão de Utilizadores</h1><p class="text-gray-600">Adicione e gerencie os membros da sua equipa.</p></div>
+                    <button id="add-user-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md mt-4 sm:mt-0">Adicionar Novo Utilizador</button>
+                </header>
+                <div class="p-6">
+                    <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b-2 border-gray-200">
+                                <tr>
+                                    <th class="p-4">Email</th>
+                                    <th class="p-4">Nível de Acesso</th>
+                                    <th class="p-4">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Linhas da tabela de utilizadores serão inseridas aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
 
         <!-- Modals -->
         <div id="cidadao-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-40 overflow-y-auto p-4">
-            <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-4xl transform transition-all scale-95 opacity-0 my-auto" id="modal-content">
+            <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-4xl modal-transition scale-95 opacity-0 my-auto" id="modal-content">
                 <div class="flex justify-between items-center mb-6"><h2 id="cidadao-modal-title" class="text-2xl font-bold">Adicionar Novo Cidadão</h2><button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div>
                 <form id="cidadao-form">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -199,18 +234,17 @@
 
                     <div class="mt-6 border-t pt-4">
                         <label class="block text-lg font-semibold text-gray-800 mb-2">Foto do Perfil</label>
-                        <div class="mt-1 flex rounded-md shadow-sm">
-                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">URL</span>
-                            <input type="text" id="cidadao-photo-url" class="flex-1 block w-full rounded-none rounded-r-md sm:text-sm border-gray-300 p-2" placeholder="https://exemplo.com/foto.jpg">
+                        <div class="mt-1 flex items-center">
+                             <div class="w-full">
+                                <label for="cidadao-photo-upload" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50">
+                                    <span>Carregar uma foto</span>
+                                    <input id="cidadao-photo-upload" name="cidadao-photo-upload" type="file" class="sr-only" accept="image/*">
+                                </label>
+                                <span id="file-name-display" class="ml-3 text-sm text-gray-600">Nenhuma foto selecionada</span>
+                            </div>
+                             <img id="photo-preview" src="" alt="Pré-visualização da Foto" class="h-16 w-16 rounded-full object-cover hidden ml-4">
                         </div>
-                        <div class="mt-2 text-center text-sm text-gray-500">ou</div>
-                        <div class="mt-2">
-                            <label for="cidadao-photo-upload" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50">
-                                <span>Carregar um ficheiro</span>
-                                <input id="cidadao-photo-upload" name="cidadao-photo-upload" type="file" class="sr-only" accept="image/*">
-                            </label>
-                            <span id="file-name-display" class="ml-3 text-sm text-gray-600">Nenhum ficheiro selecionado</span>
-                        </div>
+                         <progress id="upload-progress" value="0" max="100" class="w-full mt-2 hidden"></progress>
                     </div>
                     <div class="flex justify-end gap-4 pt-6 mt-6 border-t">
                         <button type="button" id="cancel-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
@@ -221,7 +255,7 @@
         </div>
         
         <div id="cidadao-details-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 overflow-y-auto p-4">
-            <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl transform transition-all scale-95 opacity-0 my-auto">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl modal-transition scale-95 opacity-0 my-auto">
                 <div class="p-6">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-4">
@@ -353,6 +387,37 @@
                 </div>
             </div>
         </div>
+
+        <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="user-modal-title" class="text-2xl font-bold">Novo Utilizador</h2>
+                    <button id="close-user-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+                </div>
+                <form id="user-form">
+                     <div class="mb-4">
+                        <label for="user-email" class="block text-sm font-medium text-gray-700 mb-1">Email do Utilizador</label>
+                        <input type="email" id="user-email" class="w-full border border-gray-300 p-3 rounded-lg" required placeholder="email@exemplo.com">
+                    </div>
+                     <div class="mb-4">
+                        <label for="user-uid" class="block text-sm font-medium text-gray-700 mb-1">User ID (UID)</label>
+                        <input type="text" id="user-uid" class="w-full border border-gray-300 p-3 rounded-lg" required placeholder="Cole o UID do Firebase Auth aqui">
+                        <p class="text-xs text-gray-500 mt-1">Crie o utilizador no Firebase Authentication primeiro e cole o UID aqui.</p>
+                    </div>
+                    <div class="mb-6">
+                        <label for="user-role" class="block text-sm font-medium text-gray-700 mb-1">Nível de Acesso</label>
+                        <select id="user-role" class="w-full border border-gray-300 p-3 rounded-lg bg-white" required>
+                            <option value="Assessor">Assessor (Acesso Limitado)</option>
+                            <option value="Administrador">Administrador (Acesso Total)</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-4">
+                        <button type="button" id="cancel-user-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
+                        <button type="submit" id="save-user-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Salvar Utilizador</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
 
@@ -360,43 +425,88 @@
     <script type="module">
         // 1. Importar as bibliotecas do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, onSnapshot, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-        // 2. Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyC5XTEAfbKkN4x6iw1dZPWHvtcNC_a_eVw",
-            authDomain: "gestor-valente-crm.firebaseapp.com",
-            projectId: "gestor-valente-crm",
-            storageBucket: "gestor-valente-crm.appspot.com",
-            messagingSenderId: "1015920298445",
-            appId: "1:1015920298445:web:38f28f0802756c250d9c84"
-        };
+        // --- Variáveis de Ambiente e Configuração Segura ---
+        // Estas variáveis são injetadas pelo ambiente de execução para segurança.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config)
+            : { /* Suas chaves de desenvolvimento podem ir aqui, mas NUNCA em produção */ };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gestor-valente-crm';
 
         // 3. Inicializar o Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        // --- Referências às coleções ---
         const cidadaosCollection = collection(db, "cidadaos");
         const demandasCollection = collection(db, "demandas");
+        const usersCollection = collection(db, "users");
+
 
         document.addEventListener('DOMContentLoaded', () => {
             const loginPage = document.getElementById('login-page');
             const appContainer = document.getElementById('app-container');
             const loginForm = document.getElementById('login-form');
+            const globalLoader = document.getElementById('global-loader');
             
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    loginPage.classList.add('hidden');
-                    appContainer.classList.remove('hidden');
-                    appContainer.classList.add('flex');
-                    initializeMainApp();
-                } else {
+            let currentUserRole = null;
+            let unsubscribeCidadaos, unsubscribeDemandas, unsubscribeUsers;
+
+            // --- Lógica de Autenticação ---
+            onAuthStateChanged(auth, async user => {
+                try {
+                    if (unsubscribeCidadaos) unsubscribeCidadaos();
+                    if (unsubscribeDemandas) unsubscribeDemandas();
+                    if (unsubscribeUsers) unsubscribeUsers();
+
+                    if (user) {
+                        const userDocRef = doc(db, "users", user.uid);
+                        const userDocSnap = await getDoc(userDocRef);
+
+                        currentUserRole = userDocSnap.exists() ? userDocSnap.data().role : 'Assessor';
+                        
+                        loginPage.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        appContainer.classList.add('flex');
+                        initializeMainApp();
+                    } else {
+                        currentUserRole = null;
+                        loginPage.classList.remove('hidden');
+                        appContainer.classList.add('hidden');
+                        appContainer.classList.remove('flex');
+                        globalLoader.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error("Erro crítico na autenticação ou verificação de permissão:", error.message);
+                    showToast('Ocorreu um erro de permissão. Verifique as regras do Firestore e a configuração do utilizador.', 'error');
+                    globalLoader.classList.add('hidden');
                     loginPage.classList.remove('hidden');
-                    appContainer.classList.add('hidden');
-                    appContainer.classList.remove('flex');
+                    if (auth.currentUser) await signOut(auth); // Deslogar para evitar loop de erros
                 }
             });
+
+            const authenticate = async () => {
+                try {
+                     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else if (!auth.currentUser) {
+                         globalLoader.classList.add('hidden');
+                         loginPage.classList.remove('hidden');
+                    }
+                } catch(error) {
+                    console.error("Erro na autenticação com token:", error);
+                    showToast(`Erro de autenticação: ${error.message}`, 'error');
+                    globalLoader.classList.add('hidden');
+                    loginPage.classList.remove('hidden');
+                }
+            };
+            authenticate();
 
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -408,7 +518,14 @@
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
                 } catch (error) {
-                    showToast('Email ou palavra-passe inválidos.', 'error');
+                    console.error("Erro de login:", error.code, error.message);
+                    let friendlyMessage = 'Email ou palavra-passe inválidos.';
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+                        friendlyMessage = 'Nenhum utilizador encontrado com este email.';
+                    } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                        friendlyMessage = 'A palavra-passe está incorreta.';
+                    }
+                    showToast(friendlyMessage, 'error');
                 } finally {
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = 'Entrar';
@@ -420,6 +537,7 @@
                 if (appInitialized) return;
                 appInitialized = true;
 
+                // --- Seletores de Elementos ---
                 const logoutBtn = document.getElementById('logout-btn');
                 const sidebarNav = document.getElementById('sidebar-nav');
                 const pages = document.querySelectorAll('.page');
@@ -477,13 +595,22 @@
                 const confirmationMessage = document.getElementById('confirmation-message');
                 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
                 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-
-                let allCidadaos = [], allDemandas = [], allLeaders = [], editingCidadaoId = null, viewingCidadaoId = null;
+                const usersNavLink = document.getElementById('users-nav-link');
+                const addUserBtn = document.getElementById('add-user-btn');
+                const userModal = document.getElementById('user-modal');
+                const closeUserModalBtn = document.getElementById('close-user-modal-btn');
+                const cancelUserBtn = document.getElementById('cancel-user-btn');
+                const userForm = document.getElementById('user-form');
+                const usersTableBody = document.getElementById('users-table-body');
+                const uploadProgress = document.getElementById('upload-progress');
+                const photoPreview = document.getElementById('photo-preview');
+                
+                let allCidadaos = [], allDemandas = [], allLeaders = [], allUsers = [], editingCidadaoId = null, viewingCidadaoId = null;
                 let itemToDelete = { id: null, type: null }, viewingDemandaId = null, notesUnsubscribe = null;
                 let map = null, markers = [], cidadaosChart = null, demandasChart = null;
 
                 logoutBtn.addEventListener('click', async () => {
-                    try { await signOut(auth); } catch (error) { showToast('Erro ao terminar a sessão.', 'error'); }
+                    try { await signOut(auth); appInitialized = false; } catch (error) { showToast('Erro ao terminar a sessão.', 'error'); }
                 });
                 
                 function switchPage(pageId) {
@@ -502,6 +629,17 @@
                     const link = e.target.closest('a');
                     if (link) { e.preventDefault(); switchPage(link.getAttribute('href').substring(1) + '-page'); }
                 });
+
+                function applyPermissions(role) {
+                    const adminOnlyElements = document.querySelectorAll('#users-nav-link, #generate-report-btn, #add-user-btn');
+                    if (role === 'Administrador') {
+                        adminOnlyElements.forEach(el => el.classList.remove('hidden'));
+                        document.querySelectorAll('.delete-cidadao-btn, #delete-demanda-btn, .delete-user-btn').forEach(btn => btn.style.display = 'flex');
+                    } else { // Assessor
+                        adminOnlyElements.forEach(el => el.classList.add('hidden'));
+                        document.querySelectorAll('.delete-cidadao-btn, #delete-demanda-btn, .delete-user-btn').forEach(btn => btn.style.display = 'none');
+                    }
+                }
                 
                 function updateDashboard() {
                     dashboardTotalCidadaos.textContent = allCidadaos.length;
@@ -576,16 +714,26 @@
                     if (bairro) { filteredCidadaos = filteredCidadaos.filter(c => c.address && c.address.bairro === bairro); }
                     const leaderId = filterLeader.value;
                     if (leaderId) { filteredCidadaos = filteredCidadaos.filter(c => c.leaderId === leaderId); }
-                    if (filteredCidadaos.length === 0) { cidadaosGrid.innerHTML = `<p class="text-slate-500 col-span-full text-center mt-8">Nenhum cidadão encontrado com os filtros aplicados.</p>`; return; }
+                    
+                    if (filteredCidadaos.length === 0) {
+                         cidadaosGrid.innerHTML = `<div class="col-span-full text-center mt-8 p-6 bg-white rounded-lg shadow-sm">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">Nenhum cidadão encontrado</h3>
+                            <p class="mt-1 text-sm text-gray-500">Tente limpar os filtros ou adicione um novo cidadão.</p>
+                        </div>`;
+                         return;
+                    }
+
                     cidadaosGrid.innerHTML = filteredCidadaos.map(cidadao => {
                         const photoElement = cidadao.photo ? `<img src="${cidadao.photo}" class="w-24 h-24 object-cover rounded-full" alt="Foto de ${cidadao.name}">` : `<div class="w-24 h-24 ${cidadao.color || 'bg-gray-500'} rounded-full flex items-center justify-center text-white text-3xl font-bold">${cidadao.initials || '??'}</div>`;
+                        const deleteBtnHtml = currentUserRole === 'Administrador' ? `<button data-id="${cidadao.id}" aria-label="Excluir Cidadão" class="delete-cidadao-btn bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-600 text-xl font-bold">&times;</button>` : '';
                         return `
                             <div data-id="${cidadao.id}" class="cidadao-card bg-white rounded-lg p-5 shadow-sm text-center flex flex-col items-center transition-transform transform hover:-translate-y-1 cursor-pointer">
                                 <div class="relative w-24 h-24 mb-4 pointer-events-none">
                                     ${photoElement}
                                     <div class="absolute -top-1 -right-1 flex flex-col gap-1 pointer-events-auto">
-                                        <button data-id="${cidadao.id}" class="edit-cidadao-btn bg-gray-600 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-700 p-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
-                                        <button data-id="${cidadao.id}" class="delete-cidadao-btn bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-600 text-xl font-bold">&times;</button>
+                                        <button data-id="${cidadao.id}" aria-label="Editar Cidadão" class="edit-cidadao-btn bg-gray-600 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-700 p-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
+                                        ${deleteBtnHtml}
                                     </div>
                                 </div>
                                 <h3 class="text-lg font-bold text-gray-800 pointer-events-none">${cidadao.name}</h3>
@@ -667,7 +815,10 @@
                                 }
                             });
                         }
-                        document.getElementById('cidadao-photo-url').value = cidadao.photo && cidadao.photo.startsWith('http') ? cidadao.photo : '';
+                        if (cidadao.photo) {
+                            photoPreview.src = cidadao.photo;
+                            photoPreview.classList.remove('hidden');
+                        }
                     } else {
                         cidadaoModalTitle.textContent = "Adicionar Novo Cidadão";
                     }
@@ -681,7 +832,10 @@
                         cidadaoModal.classList.add('hidden');
                         cidadaoForm.reset();
                         childrenContainer.innerHTML = '';
-                        document.getElementById('file-name-display').textContent = 'Nenhum ficheiro selecionado';
+                        document.getElementById('file-name-display').textContent = 'Nenhuma foto selecionada';
+                        photoPreview.classList.add('hidden');
+                        photoPreview.src = '';
+                        uploadProgress.classList.add('hidden');
                         editingCidadaoId = null;
                     }, 300);
                 }
@@ -760,11 +914,23 @@
                 }
                 ['cidadao-cpf', 'cidadao-cep', 'cidadao-phone', 'cidadao-voterid'].forEach(id => document.getElementById(id).addEventListener('input', applyMask));
                 childrenContainer.addEventListener('input', applyMask);
+                
                 document.getElementById('cidadao-photo-upload').addEventListener('change', (e) => {
-                    const fileName = e.target.files.length > 0 ? e.target.files[0].name : 'Nenhum ficheiro selecionado';
-                    document.getElementById('file-name-display').textContent = fileName;
-                     if (e.target.files.length > 0) document.getElementById('cidadao-photo-url').value = '';
+                    const file = e.target.files[0];
+                    if (!file) {
+                        document.getElementById('file-name-display').textContent = 'Nenhuma foto selecionada';
+                        photoPreview.classList.add('hidden');
+                        return;
+                    }
+                    document.getElementById('file-name-display').textContent = file.name;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        photoPreview.src = event.target.result;
+                        photoPreview.classList.remove('hidden');
+                    }
+                    reader.readAsDataURL(file);
                 });
+
 
                 function populateLeadersDropdown(isForm = false) {
                     const select = isForm ? leaderSelect : filterLeader;
@@ -791,8 +957,7 @@
                         if (voterId) queries.push(getDocs(query(cidadaosCollection, where("voterId", "==", voterId))));
 
                         const results = await Promise.all(queries);
-                        let duplicateDoc = null;
-                        let duplicateField = '';
+                        let duplicateDoc = null, duplicateField = '';
 
                         if (results[0] && !results[0].empty) {
                             results[0].forEach(doc => { if (doc.id !== editingCidadaoId) { duplicateDoc = doc; duplicateField = 'CPF'; } });
@@ -805,8 +970,7 @@
                         if (duplicateDoc) {
                             const duplicateData = duplicateDoc.data();
                             const leader = allLeaders.find(l => l.id === duplicateData.leaderId);
-                            const leaderName = leader ? leader.name : 'não informada';
-                            showToast(`${duplicateField} já cadastrado. Indicado pela liderança: ${leaderName}.`, 'error');
+                            showToast(`${duplicateField} já cadastrado (Líder: ${leader ? leader.name : 'não informado'}).`, 'error');
                             return;
                         }
                     }
@@ -814,14 +978,11 @@
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<div class="spinner"></div><span>A Salvar...</span>';
 
-                    const childrenData = [];
-                    document.querySelectorAll('#children-details-container fieldset').forEach(fieldset => {
-                        childrenData.push({
-                            name: fieldset.querySelector('.child-detail-name').value,
-                            cpf: fieldset.querySelector('.child-detail-cpf').value,
-                            dob: fieldset.querySelector('.child-detail-dob').value
-                        });
-                    });
+                    const childrenData = Array.from(document.querySelectorAll('#children-details-container fieldset')).map(fieldset => ({
+                        name: fieldset.querySelector('.child-detail-name').value,
+                        cpf: fieldset.querySelector('.child-detail-cpf').value,
+                        dob: fieldset.querySelector('.child-detail-dob').value
+                    }));
 
                     const fullAddress = `${document.getElementById('cidadao-logradouro').value}, ${document.getElementById('cidadao-numero').value}, ${document.getElementById('cidadao-bairro').value}, ${document.getElementById('cidadao-cidade').value} - ${document.getElementById('cidadao-estado').value}`;
                     const coords = await geocodeAddress(fullAddress);
@@ -846,40 +1007,60 @@
                     };
                     
                     const photoFile = document.getElementById('cidadao-photo-upload').files[0];
-                    const photoUrl = document.getElementById('cidadao-photo-url').value;
-
-                    if (photoFile) {
-                        cidadaoData.photo = await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onload = (e) => resolve(e.target.result);
-                            reader.readAsDataURL(photoFile);
-                        });
-                    } else if (photoUrl) {
-                        cidadaoData.photo = photoUrl;
-                    } else if (!editingCidadaoId) {
-                         cidadaoData.color = ['bg-purple-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'][Math.floor(Math.random() * 4)];
-                    } else {
-                        const existingCidadao = allCidadaos.find(c => c.id === editingCidadaoId);
-                        cidadaoData.photo = existingCidadao ? (existingCidadao.photo || null) : null;
-                        cidadaoData.color = existingCidadao ? (existingCidadao.color || null) : null;
-                    }
 
                     try {
+                        if (photoFile) {
+                            const storageRef = ref(storage, `profile_photos/${appId}/${Date.now()}_${photoFile.name}`);
+                            const uploadTask = uploadBytesResumable(storageRef, photoFile);
+
+                            uploadTask.on('state_changed', 
+                                (snapshot) => {
+                                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                    uploadProgress.value = progress;
+                                    uploadProgress.classList.remove('hidden');
+                                }, 
+                                (error) => {
+                                    console.error("Upload error:", error);
+                                    showToast('Erro ao carregar a foto.', 'error');
+                                    saveBtn.disabled = false; saveBtn.innerHTML = 'Salvar';
+                                }, 
+                                async () => {
+                                    cidadaoData.photo = await getDownloadURL(uploadTask.snapshot.ref);
+                                    await saveCidadao(cidadaoData);
+                                }
+                            );
+                        } else {
+                             const existingCidadao = editingCidadaoId ? allCidadaos.find(c => c.id === editingCidadaoId) : null;
+                             cidadaoData.photo = existingCidadao?.photo || null;
+                             if (!cidadaoData.photo) {
+                                cidadaoData.color = existingCidadao?.color || ['bg-purple-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'][Math.floor(Math.random() * 4)];
+                             }
+                            await saveCidadao(cidadaoData);
+                        }
+                    } catch (error) {
+                         console.error("Erro ao processar formulário: ", error); showToast('Erro ao salvar cidadão.', 'error');
+                         saveBtn.disabled = false; saveBtn.innerHTML = 'Salvar';
+                    }
+                });
+
+                async function saveCidadao(data) {
+                     try {
                         if (editingCidadaoId) {
-                            const docRef = doc(db, "cidadaos", editingCidadaoId);
-                            await updateDoc(docRef, cidadaoData);
+                            await updateDoc(doc(db, "cidadaos", editingCidadaoId), data);
                             showToast('Cidadão atualizado com sucesso!');
                         } else {
-                            await addDoc(cidadaosCollection, cidadaoData);
+                            await addDoc(cidadaosCollection, data);
                             showToast('Cidadão adicionado com sucesso!');
                         }
                         closeCidadaoModal();
-                    } catch (error) { console.error("Erro ao salvar cidadão: ", error); showToast('Erro ao salvar cidadão.', 'error'); }
-
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = 'Salvar';
-                });
+                    } catch (error) {
+                        console.error("Erro ao salvar no Firestore: ", error); showToast('Erro ao salvar dados.', 'error');
+                    } finally {
+                         saveBtn.disabled = false; saveBtn.innerHTML = 'Salvar';
+                    }
+                }
                 
+                // --- Lógica de Demandas ---
                 function renderAllDemandas() {
                     let filteredDemandas = [...allDemandas];
                     const status = demandaFilterStatus.value;
@@ -1006,9 +1187,9 @@
                     addNoteForm.reset();
                 });
 
-                function openConfirmationModal(id, type) {
-                    itemToDelete = { id, type };
-                    confirmationTitle.textContent = `Confirmar Exclusão de ${type === 'cidadao' ? 'Cidadão' : 'Demanda'}`;
+                function openConfirmationModal(id, type, email = '') {
+                    itemToDelete = { id, type, email };
+                    confirmationTitle.textContent = `Confirmar Exclusão de ${type === 'cidadao' ? 'Cidadão' : (type === 'demanda' ? 'Demanda' : 'Utilizador')}`;
                     confirmationMessage.textContent = `Você tem certeza? Esta ação não pode ser desfeita.${type === 'cidadao' ? ' Todas as demandas associadas também serão excluídas.' : ''}`;
                     confirmationModal.classList.remove('hidden');
                 }
@@ -1028,9 +1209,12 @@
                         notesSnapshot.forEach(d => batch.delete(d.ref));
                         batch.delete(doc(db, "demandas", id));
                         closeDemandaDetailsModal();
+                    } else if (type === 'user') {
+                         batch.delete(doc(db, "users", id));
                     }
+
                     await batch.commit();
-                    showToast(`${type === 'cidadao' ? 'Cidadão' : 'Demanda'} excluído(a) com sucesso.`, 'error');
+                    showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} excluído(a) com sucesso.`, 'error');
                     confirmationModal.classList.add('hidden');
                 });
                 
@@ -1066,10 +1250,10 @@
                          childrenDetailsEl.innerHTML = '<h4 class="font-semibold text-gray-500 text-sm mt-2">FILHOS/FILHAS</h4>' + cidadao.children.map(child => `<p class="text-sm">${child.name || 'Nome não informado'} (${child.dob ? new Date(child.dob).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 's/ data'})</p>`).join('');
                     }
                     cidadaoDetailsModal.classList.remove('hidden');
-                    setTimeout(() => cidadaoDetailsModal.querySelector('.transform').classList.remove('scale-95', 'opacity-0'), 10);
+                    setTimeout(() => cidadaoDetailsModal.querySelector('.modal-transition').classList.remove('scale-95', 'opacity-0'), 10);
                 }
                 function closeCidadaoDetailsModal() {
-                     cidadaoDetailsModal.querySelector('.transform').classList.add('scale-95', 'opacity-0');
+                     cidadaoDetailsModal.querySelector('.modal-transition').classList.add('scale-95', 'opacity-0');
                      setTimeout(() => {
                         cidadaoDetailsModal.classList.add('hidden');
                         viewingCidadaoId = null;
@@ -1151,27 +1335,12 @@
                     if (bairro) { filteredCidadaos = filteredCidadaos.filter(c => c.address && c.address.bairro === bairro); }
                     const leaderId = filterLeader.value;
                     if (leaderId) { filteredCidadaos = filteredCidadaos.filter(c => c.leaderId === leaderId); }
-
-                    if (filteredCidadaos.length === 0) {
-                        showToast('Nenhum dado para gerar relatório com os filtros atuais.', 'error');
-                        return;
-                    }
-
+                    if (filteredCidadaos.length === 0) { showToast('Nenhum dado para gerar relatório com os filtros atuais.', 'error'); return; }
                     const reportWindow = window.open('', '_blank');
-                    const filtersApplied = [
-                        searchTerm ? `Busca: "${searchTerm}"` : '',
-                        type ? `Tipo: "${type}"` : '',
-                        bairro ? `Bairro: "${bairro}"` : '',
-                        leaderId ? `Liderança: "${allLeaders.find(l => l.id === leaderId)?.name}"` : ''
-                    ].filter(Boolean).join('; ');
-
+                    const filtersApplied = [ searchTerm ? `Busca: "${searchTerm}"` : '', type ? `Tipo: "${type}"` : '', bairro ? `Bairro: "${bairro}"` : '', leaderId ? `Liderança: "${allLeaders.find(l => l.id === leaderId)?.name}"` : '' ].filter(Boolean).join('; ');
                     let reportHTML = `
                         <html>
-                            <head>
-                                <title>Relatório de Cidadãos</title>
-                                <script src="https://cdn.tailwindcss.com"><\/script>
-                                <style> @media print { body { -webkit-print-color-adjust: exact; } #print-button { display: none; } } </style>
-                            </head>
+                            <head><title>Relatório de Cidadãos</title><script src="https://cdn.tailwindcss.com"><\/script><style> @media print { body { -webkit-print-color-adjust: exact; } #print-button { display: none; } } </style></head>
                             <body class="p-8 font-sans">
                                 <div class="flex justify-between items-center mb-6">
                                     <div>
@@ -1182,108 +1351,132 @@
                                     <button id="print-button" onclick="window.print()" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Imprimir</button>
                                 </div>
                                 <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="bg-gray-200">
-                                            <th class="p-3 border">Nome</th>
-                                            <th class="p-3 border">Tipo</th>
-                                            <th class="p-3 border">Profissão</th>
-                                            <th class="p-3 border">Telefone</th>
-                                            <th class="p-3 border">Bairro</th>
-                                            <th class="p-3 border">Liderança</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
-
+                                    <thead><tr class="bg-gray-200"><th class="p-3 border">Nome</th><th class="p-3 border">Tipo</th><th class="p-3 border">Profissão</th><th class="p-3 border">Telefone</th><th class="p-3 border">Bairro</th><th class="p-3 border">Liderança</th></tr></thead><tbody>`;
                     filteredCidadaos.forEach(c => {
                         const leader = allLeaders.find(l => l.id === c.leaderId);
-                        reportHTML += `
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-3 border">${c.name}</td>
-                                <td class="p-3 border">${c.type}</td>
-                                <td class="p-3 border">${c.profissao || 'N/A'}</td>
-                                <td class="p-3 border">${c.phone || 'N/A'}</td>
-                                <td class="p-3 border">${c.address?.bairro || 'N/A'}</td>
-                                <td class="p-3 border">${leader?.name || 'Nenhuma'}</td>
-                            </tr>
-                        `;
+                        reportHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-3 border">${c.name}</td><td class="p-3 border">${c.type}</td><td class="p-3 border">${c.profissao || 'N/A'}</td><td class="p-3 border">${c.phone || 'N/A'}</td><td class="p-3 border">${c.address?.bairro || 'N/A'}</td><td class="p-3 border">${leader?.name || 'Nenhuma'}</td></tr>`;
                     });
-
-                    reportHTML += `
-                                    </tbody>
-                                </table>
-                                <p class="text-right text-gray-700 mt-4">Total de Cidadãos: <b>${filteredCidadaos.length}</b></p>
-                            </body>
-                        </html>
-                    `;
-
+                    reportHTML += `</tbody></table><p class="text-right text-gray-700 mt-4">Total de Cidadãos: <b>${filteredCidadaos.length}</b></p></body></html>`;
                     reportWindow.document.write(reportHTML);
                     reportWindow.document.close();
                 }
-
                 generateReportBtn.addEventListener('click', generateReport);
 
-                function listenForFirebaseData() {
-                    onSnapshot(query(cidadaosCollection, orderBy("name")), (snapshot) => {
+                function listenForFirebaseData(role) {
+                    globalLoader.classList.remove('hidden');
+                    
+                    const dataLoaded = { cidadaos: false, demandas: false, users: false };
+                    const checkAllDataLoaded = () => {
+                        if (Object.values(dataLoaded).every(Boolean)) {
+                            globalLoader.classList.add('hidden');
+                        }
+                    };
+
+                    unsubscribeCidadaos = onSnapshot(query(cidadaosCollection, orderBy("name")), (snapshot) => {
                         allCidadaos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         allLeaders = allCidadaos.filter(c => c.type === 'Liderança');
                         renderCidadaos();
                         populateFilterDropdowns();
                         updateDashboard();
+                        dataLoaded.cidadaos = true; checkAllDataLoaded();
+                    }, (error) => {
+                        console.error("Erro ao carregar cidadãos:", error);
+                        showToast('Erro de permissão ao carregar cidadãos.', 'error');
+                        globalLoader.classList.add('hidden');
                     });
-                    onSnapshot(query(demandasCollection, orderBy("createdAt", "desc")), (snapshot) => {
+
+                    unsubscribeDemandas = onSnapshot(query(demandasCollection, orderBy("createdAt", "desc")), (snapshot) => {
                         allDemandas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         renderAllDemandas();
                         updateDashboard();
+                        dataLoaded.demandas = true; checkAllDataLoaded();
+                    }, (error) => {
+                        console.error("Erro ao carregar demandas:", error);
+                        showToast('Erro de permissão ao carregar demandas.', 'error');
+                        globalLoader.classList.add('hidden');
                     });
+                    
+                    if (role === 'Administrador') {
+                        unsubscribeUsers = onSnapshot(query(usersCollection, orderBy("email")), (snapshot) => {
+                            allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            renderUsersTable();
+                            dataLoaded.users = true; checkAllDataLoaded();
+                        }, (error) => {
+                            console.error("Erro ao carregar utilizadores:", error);
+                            showToast('Erro ao carregar a lista de utilizadores.', 'error');
+                            globalLoader.classList.add('hidden');
+                        });
+                    } else {
+                        allUsers = [];
+                        renderUsersTable();
+                        dataLoaded.users = true;
+                        checkAllDataLoaded();
+                    }
                 }
 
-                async function seedInitialData() {
-                    const snapshot = await getDocs(cidadaosCollection);
-                    if (!snapshot.empty) return;
 
-                    showToast('Base de dados vazia. A adicionar dados de exemplo...', 'info');
-                    
-                    const sampleLeaders = [
-                        { name: "João da Silva", email: "joao.silva.leader@example.com", type: "Liderança", profissao: "Empresário", address: { logradouro: "Avenida Princesa Isabel", numero: "123", bairro: "Central", cidade: "Santana", estado: "AP", cep: "68925-059" } },
-                        { name: "Maria Oliveira", email: "maria.oliveira.leader@example.com", type: "Liderança", profissao: "Professora", address: { logradouro: "Rua Adálvaro Cavalcante", numero: "456", bairro: "Paraíso", cidade: "Santana", estado: "AP", cep: "68928-043" } }
-                    ];
-
-                    const leaderDocs = [];
-                    for (const leader of sampleLeaders) {
-                        const fullAddress = `${leader.address.logradouro}, ${leader.address.numero}, ${leader.address.bairro}, ${leader.address.cidade} - ${leader.address.estado}`;
-                        const coords = await geocodeAddress(fullAddress);
-                        const docRef = doc(cidadaosCollection);
-                        leaderDocs.push({ ref: docRef, data: { ...leader, lat: coords?.lat || null, lon: coords?.lon || null, initials: leader.name.split(' ').map(n=>n[0]).join('').substring(0,2) }});
+                // --- GESTÃO DE UTILIZADORES ---
+                function renderUsersTable() {
+                    usersTableBody.innerHTML = '';
+                    if (allUsers.length > 0) {
+                         allUsers.forEach(user => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b';
+                            const deleteBtnUser = currentUserRole === 'Administrador' ? `<button data-id="${user.id}" data-email="${user.email}" aria-label="Excluir Utilizador" class="delete-user-btn ml-4 text-red-500 hover:text-red-700"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : '';
+                            tr.innerHTML = `
+                                <td class="p-4">${user.email}</td>
+                                <td class="p-4">${user.role}</td>
+                                <td class="p-4">${deleteBtnUser}</td>
+                            `;
+                             usersTableBody.appendChild(tr);
+                        });
                     }
-
-                    const batch = writeBatch(db);
-                    leaderDocs.forEach(ld => batch.set(ld.ref, ld.data));
-                    
-                    const leaderIds = leaderDocs.map(ld => ld.ref.id);
-
-                    const sampleCidadaos = [
-                        { name: "Carlos Pereira", email: "carlos.p@example.com", type: "Apoiador", dob: "1988-05-20", leaderId: leaderIds[0], cpf: "111.222.333-44", phone: "(96) 99111-1111", profissao: "Motorista", address: { logradouro: "Avenida 15 de Novembro", numero: "789", bairro: "Central", cidade: "Santana", estado: "AP", cep: "68925-065"} },
-                        { name: "Ana Costa", email: "ana.costa@example.com", type: "Eleitor", dob: "1995-02-10", leaderId: leaderIds[1], cpf: "222.333.444-55", phone: "(96) 99222-2222", profissao: "Enfermeira", address: { logradouro: "Rua Cláudio Lúcio Monteiro", numero: "101", bairro: "Paraíso", cidade: "Santana", estado: "AP", cep: "68925-153"} },
-                        { name: "Pedro Souza", email: "pedro.souza@example.com", type: "Apoiador", dob: "1990-11-30", leaderId: leaderIds[0], cpf: "333.444.555-66", phone: "(96) 99333-3333", profissao: "Comerciante", address: { logradouro: "Avenida Santana", numero: "212", bairro: "Comercial", cidade: "Santana", estado: "AP", cep: "68925-077"} },
-                        { name: "Juliana Santos", email: "juliana.s@example.com", type: "Eleitor", dob: "2000-08-15", leaderId: leaderIds[1], cpf: "444.555.666-77", phone: "(96) 99444-4444", profissao: "Estudante", address: { logradouro: "Rua Salvador Diniz", numero: "345", bairro: "Nova Brasília", cidade: "Santana", estado: "AP", cep: "68927-013"} },
-                        { name: "Marcos Andrade", email: "marcos.a@example.com", type: "Apoiador", dob: "1985-01-25", leaderId: leaderIds[0], cpf: "555.666.777-88", phone: "(96) 99555-5555", profissao: "Advogado", address: { logradouro: "Avenida Castelo Branco", numero: "567", bairro: "Remédios", cidade: "Santana", estado: "AP", cep: "68928-115"} },
-                        { name: "Fernanda Lima", email: "fernanda.lima@example.com", type: "Eleitor", dob: "1998-07-07", leaderId: leaderIds[1], cpf: "666.777.888-99", phone: "(96) 99666-6666", profissao: "Servidora Pública", address: { logradouro: "Travessa Manoel de Souza", numero: "890", bairro: "Igarapé da Fortaleza", cidade: "Santana", estado: "AP", cep: "68926-114"} }
-                    ];
-
-                    for (const cidadao of sampleCidadaos) {
-                        const fullAddress = `${cidadao.address.logradouro}, ${cidadao.address.numero}, ${cidadao.address.bairro}, ${cidadao.address.cidade} - ${cidadao.address.estado}`;
-                        const coords = await geocodeAddress(fullAddress);
-                        const docRef = doc(cidadaosCollection);
-                        batch.set(docRef, { ...cidadao, lat: coords?.lat || null, lon: coords?.lon || null, initials: cidadao.name.split(' ').map(n=>n[0]).join('').substring(0,2), color: ['bg-purple-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'][Math.floor(Math.random() * 4)] });
-                    }
-                    await batch.commit();
-                    showToast('Dados de exemplo foram carregados.', 'info');
                 }
+                 usersTableBody.addEventListener('click', e => {
+                    const deleteBtn = e.target.closest('.delete-user-btn');
+                     if (deleteBtn) {
+                        openConfirmationModal(deleteBtn.dataset.id, 'user', deleteBtn.dataset.email);
+                    }
+                });
+
+
+                addUserBtn.addEventListener('click', () => { userModal.classList.remove('hidden'); });
+                closeUserModalBtn.addEventListener('click', () => { userModal.classList.add('hidden'); userForm.reset(); });
+                cancelUserBtn.addEventListener('click', () => { userModal.classList.add('hidden'); userForm.reset(); });
+                
+                userForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('user-email').value;
+                    const uid = document.getElementById('user-uid').value;
+                    const role = document.getElementById('user-role').value;
+                    
+                    if(!uid) {
+                        showToast('O User ID (UID) é obrigatório.', 'error');
+                        return;
+                    }
+
+                    const userDocRef = doc(db, "users", uid);
+                    const userDocSnap = await getDoc(userDocRef);
+
+                    if(userDocSnap.exists()) {
+                        showToast('Um utilizador com este UID já está registado.', 'error');
+                        return;
+                    }
+                    
+                    try {
+                         await setDoc(userDocRef, { email, role, uid });
+                        showToast('Utilizador adicionado com sucesso.');
+                        userForm.reset();
+                        userModal.classList.add('hidden');
+                    } catch (error) {
+                        console.error("Erro ao adicionar utilizador:", error);
+                        showToast('Erro ao salvar o utilizador.', 'error');
+                    }
+                });
                 
                 switchPage('dashboard-page');
-                listenForFirebaseData();
-                seedInitialData();
+                applyPermissions(currentUserRole);
+                listenForFirebaseData(currentUserRole);
             }
         });
 
@@ -1305,7 +1498,7 @@
             toast.innerHTML = `${icon}<span>${message}</span>`;
             toastContainer.appendChild(toast);
             setTimeout(() => { toast.classList.remove('opacity-0', 'translate-x-10'); }, 10);
-            setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-10'); toast.addEventListener('transitionend', () => toast.remove()); }, 3000);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-10'); toast.addEventListener('transitionend', () => toast.remove()); }, 4000);
         }
     </script>
 </body>
