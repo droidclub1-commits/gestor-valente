@@ -1,0 +1,112 @@
+/* Estilos Globais e Tailwind */
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling (opcional, para melhor aparência) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-500 */
+}
+
+/* Estilo para spinner de login (exemplo) */
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 4px solid #fff;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto; /* Centraliza se o botão for flex */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ajustes finos para layout flex da app */
+#app-container {
+  display: flex; /* Garante que é flex */
+}
+
+/* Assegura que o conteúdo principal ocupe o espaço restante */
+.flex-1 {
+  flex: 1 1 0%; /* Equivalente ao flex-1 do Tailwind */
+}
+
+/* Permite scroll vertical apenas no conteúdo principal */
+.page {
+  overflow-y: auto;
+  height: 100vh; /* Ocupa altura total da viewport */
+}
+/* Correção para garantir que o header não cause duplo scroll */
+.flex-col.h-screen > .page {
+    height: calc(100vh); /* Altura total menos o header se existisse fora da main */
+}
+
+
+/* Estilo para status da demanda */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px; /* pill shape */
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 600; /* font-semibold */
+  line-height: 1; /* Para centralizar verticalmente */
+}
+
+.status-pending { background-color: #FEF3C7; color: #92400E; } /* yellow-100, yellow-800 */
+.status-inprogress { background-color: #DBEAFE; color: #1E40AF; } /* blue-100, blue-800 */
+.status-completed { background-color: #D1FAE5; color: #065F46; } /* green-100, green-800 */
+
+/* Estilos básicos para elementos de formulário dentro dos modais (se necessário além do Tailwind) */
+.modal-form-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500; /* font-medium */
+    color: #4A5568; /* text-gray-700 */
+}
+.modal-form-input,
+.modal-form-select,
+.modal-form-textarea {
+    width: 100%;
+    border: 1px solid #CBD5E0; /* border-gray-300 */
+    padding: 0.5rem;
+    border-radius: 0.375rem; /* rounded-lg */
+    background-color: white;
+    margin-top: 0.25rem;
+    font-size: 0.875rem; /* text-sm */
+}
+.modal-form-button {
+    padding: 0.5rem 1.5rem;
+    border-radius: 0.375rem; /* rounded-lg */
+    font-weight: bold; /* font-bold */
+}
+
+/* Animação Modal */
+.scale-95 { transform: scale(0.95); }
+.scale-100 { transform: scale(1); }
+.opacity-0 { opacity: 0; }
+.opacity-100 { opacity: 100; }
+.transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+
+/* Custom Map Marker */
+.custom-map-marker .map-marker-content {
+  border: 1px solid #94a3b8; /* slate-400 */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
