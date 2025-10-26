@@ -1,0 +1,57 @@
+/* Estilo Base */
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Spinner para Botão de Login */
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid #fff;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto; /* Centraliza o spinner no botão */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Ajuste fino para modais */
+#cidadao-modal, #demanda-modal, #cidadao-details-modal, #demanda-details-modal, #map-modal, #confirmation-modal {
+    transition: opacity 0.3s ease-out;
+}
+#cidadao-modal > div, #cidadao-details-modal > div, #demanda-modal > div, #demanda-details-modal > div, #map-modal > div, #confirmation-modal > div {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* Scrollbar styling (opcional, para melhor aparência) */
+/* Works on Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af #e5e7eb; /* thumb track */
+}
+/* Works on Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 4px;
+  border: 2px solid #e5e7eb;
+}
+
+/* Leaflet map container */
+#map {
+    height: 100%; /* Make sure map fills its container */
+    width: 100%;
+}
+
