@@ -1,9 +1,0 @@
-# ARQUIVO: netlify.toml (na raiz do projeto)
-
-[build]
-  # Define o diretório onde o Netlify deve procurar pelos arquivos estáticos (HTML/CSS/JS)
-  publish = "."
-
-[functions]
-  # Define o diretório onde o Netlify deve procurar pelas funções Serverless
-  directory = "netlify/functions"
