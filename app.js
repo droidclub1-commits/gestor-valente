@@ -1115,32 +1115,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch(e) { console.warn('Chart bairro:', e); }
     }
-    function updateCidadaosPorSexoChart() {
+    async function updateCidadaosPorSexoChart() {
         const ctx = document.getElementById('cidadaos-por-sexo-chart');
         if (!ctx) return;
-        const data = allCidadaos.reduce((acc, c) => { const sexo = c.sexo || 'Não Informar'; acc[sexo] = (acc[sexo] || 0) + 1; return acc; }, {});
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-        if (cidadaosSexoChart) cidadaosSexoChart.destroy();
-        cidadaosSexoChart = new Chart(ctx, {
-            type: 'pie',
-            data: { labels: labels, datasets: [{ label: 'Cidadãos por Sexo', data: values, backgroundColor: ['#3B82F6', '#EC4899', '#F59E0B', '#6B7280'], }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        try {
+            const { data, error } = await sb.from('cidadaos').select('sexo');
+            if (error) throw error;
+            const contagem = (data || []).reduce((acc, c) => {
+                const sexo = c.sexo || 'Não Informar';
+                acc[sexo] = (acc[sexo] || 0) + 1;
+                return acc;
+            }, {});
+            const labels = Object.keys(contagem);
+            const values = Object.values(contagem);
+            if (cidadaosSexoChart) cidadaosSexoChart.destroy();
+            cidadaosSexoChart = new Chart(ctx, {
+                type: 'pie',
+                data: { labels, datasets: [{ label: 'Cidadãos por Sexo', data: values, backgroundColor: ['#3B82F6', '#EC4899', '#F59E0B', '#6B7280'] }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        } catch(e) { console.warn('Chart sexo:', e); }
     }
-    function updateCidadaosPorFaixaEtariaChart() {
+    async function updateCidadaosPorFaixaEtariaChart() {
         const ctx = document.getElementById('cidadaos-por-faixa-etaria-chart');
         if (!ctx) return;
-        const faixas = { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-65': 0, '66+': 0, 'N/A': 0 };
-        allCidadaos.forEach(c => { const faixa = getFaixaEtaria(c.dob); faixas[faixa]++; });
-        const labels = Object.keys(faixas);
-        const values = Object.values(faixas);
-        if (cidadaosFaixaEtariaChart) cidadaosFaixaEtariaChart.destroy();
-        cidadaosFaixaEtariaChart = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6', }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-        });
+        try {
+            const { data, error } = await sb.from('cidadaos').select('dob');
+            if (error) throw error;
+            const faixas = { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-65': 0, '66+': 0, 'N/A': 0 };
+            (data || []).forEach(c => { const faixa = getFaixaEtaria(c.dob); faixas[faixa]++; });
+            const labels = Object.keys(faixas);
+            const values = Object.values(faixas);
+            if (cidadaosFaixaEtariaChart) cidadaosFaixaEtariaChart.destroy();
+            cidadaosFaixaEtariaChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6' }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            });
+        } catch(e) { console.warn('Chart faixa etária:', e); }
     }
     async function openCidadaoModal(cidadaoId = null) {
         currentEditingId = cidadaoId;
