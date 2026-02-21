@@ -40,7 +40,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     loadMoreBtn, cidadaoLat, cidadaoLong,
     itemToDelete = { id: null, type: null }, 
     map = null, markers = [], cidadaosChart = null, demandasChart = null, 
-    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null; 
+    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null, cidadaosMunicipioChart = null; 
 document.addEventListener('DOMContentLoaded', () => {
     const loginPage = document.getElementById('login-page');
     const appContainer = document.getElementById('app-container');
