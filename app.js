@@ -21,7 +21,7 @@ let currentCidadaoIdForDetails = null;
 let currentEditingDemandaId = null;
 let viewingDemandaId = null;
 let appInitialized = false;
-let _initLock = false; // mutex: impede inicialização dupla
+let _initLock = false;
 let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     closeModalBtn, cancelBtn, saveBtn, closeDetailsModalBtn, closeDemandaModalBtn,
     cancelDemandaBtn, closeDemandaDetailsBtn, closeMapBtn, cidadaoModal,
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('login-btn');
     const emailInput = document.getElementById('email-address');
     const passwordInput = document.getElementById('password');
-    sb.auth.onAuthStateChange((event, session) => {
+    sb.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
             user = session.user;
             loginPage.classList.add('hidden');
@@ -57,14 +57,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 _initLock = true;
                 initializeMainApp().finally(() => { _initLock = false; });
             }
-        } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+        } else if (event === 'SIGNED_OUT') {
             user = null;
             userRole = null;
             allCidadaos = []; allDemandas = []; allLeaders = [];
             appInitialized = false;
-            _initLock = false;
+            // Restaura o botão de logout para o estado normal
+            const lb = document.getElementById('logout-btn');
+            if (lb) { lb.disabled = false; lb.innerHTML = 'Sair'; }
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
+        } else if (event === 'INITIAL_SESSION' && !session) {
+            user = null;
+            appInitialized = false;
         }
     });
     loginForm.addEventListener('submit', async (e) => {
@@ -107,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        // Reseta estado para evitar resíduos de sessão anterior
         allCidadaos = []; allDemandas = []; allLeaders = []; allUsers = [];
         userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
@@ -197,12 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', async () => {
             try {
                 logoutBtn.disabled = true;
-                logoutBtn.innerHTML = '<div class="spinner mx-auto"></div>';
                 await sb.auth.signOut();
-                // onAuthStateChange (SIGNED_OUT) reseta tudo e volta ao login
+                appInitialized = false;
+                // Reseta estado global
+                allCidadaos = []; allDemandas = []; allLeaders = [];
+                totalCidadaosCount = 0; cidadaosServerOffset = 0;
+                userRole = null;
             } catch (error) {
                 logoutBtn.disabled = false;
-                logoutBtn.innerHTML = 'Sair';
                 showToast("Erro ao terminar sessão.", "error");
             }
         });
