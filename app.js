@@ -21,13 +21,12 @@ let currentCidadaoIdForDetails = null;
 let currentEditingDemandaId = null;
 let viewingDemandaId = null;
 let appInitialized = false;
-let _initLock = false; // mutex: impede dupla inicialização
 let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     closeModalBtn, cancelBtn, saveBtn, closeDetailsModalBtn, closeDemandaModalBtn,
     cancelDemandaBtn, closeDemandaDetailsBtn, closeMapBtn, cidadaoModal,
     modalContent, cidadaoDetailsModal, demandaModal, demandaDetailsModal,
     mapModal, confirmationModal, cidadaoForm, demandaForm, addNoteForm,
-    searchInput, filterType, filterBairro, filterLeader, filterSexo,
+    searchInput, filterType, filterBairro, filterCidade, filterLeader, filterSexo,
     filterFaixaEtaria, clearFiltersBtn, generateReportBtn, viewMapBtn,
     demandaFilterStatus, demandaFilterLeader, demandaClearFiltersBtn,
     cidadaosGrid, allDemandasList, cidadaoLeaderSelect, demandaCidadaoSelect,
@@ -40,7 +39,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     loadMoreBtn, cidadaoLat, cidadaoLong,
     itemToDelete = { id: null, type: null }, 
     map = null, markers = [], cidadaosChart = null, demandasChart = null, 
-    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null; 
+    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null, cidadaosMunicipioChart = null; 
 document.addEventListener('DOMContentLoaded', () => {
     const loginPage = document.getElementById('login-page');
     const appContainer = document.getElementById('app-container');
@@ -48,25 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('login-btn');
     const emailInput = document.getElementById('email-address');
     const passwordInput = document.getElementById('password');
-    sb.auth.onAuthStateChange((event, session) => {
+    sb.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            if (!appInitialized && !_initLock) {
-                _initLock = true;
-                initializeMainApp().finally(() => { _initLock = false; });
+            if (!appInitialized) {
+                 await initializeMainApp(); 
             }
-        } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+        } else if (event === 'SIGNED_OUT') {
             user = null;
-            userRole = null;
-            allCidadaos = []; allDemandas = []; allLeaders = [];
-            appInitialized = false;
-            _initLock = false;
-            const lb = document.getElementById('logout-btn');
-            if (lb) { lb.disabled = false; lb.innerHTML = 'Sair'; }
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
+            appInitialized = false;
+        } else if (event === 'INITIAL_SESSION' && !session) {
+            user = null;
+            appInitialized = false;
         }
     });
     loginForm.addEventListener('submit', async (e) => {
@@ -91,15 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     async function manageSessionOnLoad() {
         const { data: { session } } = await sb.auth.getSession();
-        if (session && session.user) {
+        if (session) {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            if (!appInitialized && !_initLock) {
-                _initLock = true;
-                try { await initializeMainApp(); }
-                finally { _initLock = false; }
-            }
+            await initializeMainApp(); 
         } else {
             user = null;
             loginPage.classList.remove('hidden');
@@ -109,8 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        allCidadaos = []; allDemandas = []; allLeaders = []; allUsers = [];
-        userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
         logoutBtn = document.getElementById('logout-btn');
@@ -138,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput = document.getElementById('search-input');
         filterType = document.getElementById('filter-type');
         filterBairro = document.getElementById('filter-bairro');
+        filterCidade = document.getElementById('filter-cidade');
         filterLeader = document.getElementById('filter-leader');
         filterSexo = document.getElementById('filter-sexo');
         filterFaixaEtaria = document.getElementById('filter-faixa-etaria');
@@ -198,11 +189,14 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', async () => {
             try {
                 logoutBtn.disabled = true;
-                logoutBtn.innerHTML = '<div class="spinner mx-auto"></div>';
                 await sb.auth.signOut();
+                appInitialized = false;
+                // Reseta estado global
+                allCidadaos = []; allDemandas = []; allLeaders = [];
+                totalCidadaosCount = 0; cidadaosServerOffset = 0;
+                userRole = null;
             } catch (error) {
                 logoutBtn.disabled = false;
-                logoutBtn.innerHTML = 'Sair';
                 showToast("Erro ao terminar sessão.", "error");
             }
         });
@@ -239,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         filterType.addEventListener('change', () => renderCidadaos());
         filterBairro.addEventListener('change', () => renderCidadaos());
+        filterCidade.addEventListener('change', () => renderCidadaos());
         filterLeader.addEventListener('change', () => renderCidadaos());
         filterSexo.addEventListener('change', () => renderCidadaos());
         filterFaixaEtaria.addEventListener('change', () => renderCidadaos());
@@ -282,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // ── PERFORMANCE: controle de estado de busca server-side ──────────────────
-    let serverSearchState = { search: '', type: '', bairro: '', leader: '', sexo: '', faixaEtaria: '' };
+    let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '' };
     const CIDADAOS_PAGE_SIZE = 12;
     let totalCidadaosCount = 0;
     let cidadaosServerOffset = 0;
@@ -394,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
 
@@ -720,7 +716,28 @@ document.addEventListener('DOMContentLoaded', () => {
             closeConfirmationModal();
         }
     }
-    // getFilteredCidadaos removida — filtragem feita no servidor
+    function getFilteredCidadaos() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const type = filterType.value;
+        const bairro = filterBairro.value;
+        const leader = filterLeader.value;
+        const sexo = filterSexo.value;
+        const faixaEtaria = filterFaixaEtaria.value;
+        const filtered = allCidadaos.filter(cidadao => {
+            const nameMatch = searchInput.value && cidadao.name.toLowerCase().includes(searchTerm);
+            const emailMatch = (cidadao.email || '').toLowerCase().includes(searchTerm);
+            const cpfMatch = (cidadao.cpf || '').includes(searchTerm);
+            const typeMatch = !type || cidadao.type === type;
+            const bairroMatch = !bairro || cidadao.bairro === bairro;
+            const leaderMatch = !leader || cidadao.leader === leader;
+            const sexoMatch = !sexo || (cidadao.sexo || 'Não Informar') === sexo;
+            const ageMatch = !faixaEtaria || getFaixaEtaria(cidadao.dob) === faixaEtaria;
+            const generalMatch = !searchTerm || nameMatch || emailMatch || cpfMatch;
+            return generalMatch && typeMatch && bairroMatch && leaderMatch && sexoMatch && ageMatch;
+        });
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        return filtered;
+    }
     // ── PERFORMANCE: card construído como elemento DOM (sem innerHTML com dados de usuário) ─
     function buildCidadaoCard(cidadao) {
         const card = document.createElement('div');
@@ -769,6 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
             search:      searchInput.value.toLowerCase().trim(),
             type:        filterType.value,
             bairro:      filterBairro.value,
+            cidade:      filterCidade ? filterCidade.value : '',
             leader:      filterLeader.value,
             sexo:        filterSexo.value,
             faixaEtaria: filterFaixaEtaria.value
@@ -860,6 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = '';
         filterType.value = '';
         filterBairro.value = '';
+        if (filterCidade) filterCidade.value = '';
         filterLeader.value = '';
         filterSexo.value = '';
         filterFaixaEtaria.value = '';
@@ -888,6 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await Promise.all([
             updateAniversariantes(),
             updateCidadaosPorBairroChart(),
+            updateCidadaosPorMunicipioChart(),
             updateCidadaosPorSexoChart(),
             updateCidadaosPorFaixaEtariaChart()
         ]);
@@ -1020,6 +1040,50 @@ document.addEventListener('DOMContentLoaded', () => {
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
+    async function updateCidadaosPorMunicipioChart() {
+        const ctx = document.getElementById('cidadaos-por-municipio-chart');
+        if (!ctx) return;
+        try {
+            const { data, error } = await sb
+                .from('cidadaos')
+                .select('cidade');
+            if (error) throw error;
+            const contagem = (data || []).reduce((acc, c) => {
+                const cidade = c.cidade || 'Não Informado';
+                acc[cidade] = (acc[cidade] || 0) + 1;
+                return acc;
+            }, {});
+            const sorted = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(([k]) => k);
+            const values = sorted.map(([, v]) => v);
+            const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316'];
+            if (cidadaosMunicipioChart) cidadaosMunicipioChart.destroy();
+            cidadaosMunicipioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                                    return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch(e) { console.warn('Chart município:', e); }
+    }
+
     async function updateCidadaosPorBairroChart() {
         const ctx = document.getElementById('cidadaos-por-bairro-chart');
         if (!ctx) return;
@@ -1048,44 +1112,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch(e) { console.warn('Chart bairro:', e); }
     }
-    async function updateCidadaosPorSexoChart() {
+    function updateCidadaosPorSexoChart() {
         const ctx = document.getElementById('cidadaos-por-sexo-chart');
         if (!ctx) return;
-        try {
-            const { data, error } = await sb.from('cidadaos').select('sexo');
-            if (error) throw error;
-            const contagem = (data || []).reduce((acc, c) => {
-                const sexo = c.sexo || 'Não Informar';
-                acc[sexo] = (acc[sexo] || 0) + 1;
-                return acc;
-            }, {});
-            const labels = Object.keys(contagem);
-            const values = Object.values(contagem);
-            if (cidadaosSexoChart) cidadaosSexoChart.destroy();
-            cidadaosSexoChart = new Chart(ctx, {
-                type: 'pie',
-                data: { labels, datasets: [{ label: 'Cidadãos por Sexo', data: values, backgroundColor: ['#3B82F6', '#EC4899', '#F59E0B', '#6B7280'] }] },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        } catch(e) { console.warn('Chart sexo:', e); }
+        const data = allCidadaos.reduce((acc, c) => { const sexo = c.sexo || 'Não Informar'; acc[sexo] = (acc[sexo] || 0) + 1; return acc; }, {});
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+        if (cidadaosSexoChart) cidadaosSexoChart.destroy();
+        cidadaosSexoChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels: labels, datasets: [{ label: 'Cidadãos por Sexo', data: values, backgroundColor: ['#3B82F6', '#EC4899', '#F59E0B', '#6B7280'], }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
     }
-    async function updateCidadaosPorFaixaEtariaChart() {
+    function updateCidadaosPorFaixaEtariaChart() {
         const ctx = document.getElementById('cidadaos-por-faixa-etaria-chart');
         if (!ctx) return;
-        try {
-            const { data, error } = await sb.from('cidadaos').select('dob');
-            if (error) throw error;
-            const faixas = { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-65': 0, '66+': 0, 'N/A': 0 };
-            (data || []).forEach(c => { const faixa = getFaixaEtaria(c.dob); faixas[faixa]++; });
-            const labels = Object.keys(faixas);
-            const values = Object.values(faixas);
-            if (cidadaosFaixaEtariaChart) cidadaosFaixaEtariaChart.destroy();
-            cidadaosFaixaEtariaChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6' }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-            });
-        } catch(e) { console.warn('Chart faixa etária:', e); }
+        const faixas = { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-65': 0, '66+': 0, 'N/A': 0 };
+        allCidadaos.forEach(c => { const faixa = getFaixaEtaria(c.dob); faixas[faixa]++; });
+        const labels = Object.keys(faixas);
+        const values = Object.values(faixas);
+        if (cidadaosFaixaEtariaChart) cidadaosFaixaEtariaChart.destroy();
+        cidadaosFaixaEtariaChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6', }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
     }
     async function openCidadaoModal(cidadaoId = null) {
         currentEditingId = cidadaoId;
@@ -1418,6 +1470,7 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
@@ -1455,6 +1508,7 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
