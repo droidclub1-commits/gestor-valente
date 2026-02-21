@@ -21,12 +21,13 @@ let currentCidadaoIdForDetails = null;
 let currentEditingDemandaId = null;
 let viewingDemandaId = null;
 let appInitialized = false;
+let _initLock = false;
 let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     closeModalBtn, cancelBtn, saveBtn, closeDetailsModalBtn, closeDemandaModalBtn,
     cancelDemandaBtn, closeDemandaDetailsBtn, closeMapBtn, cidadaoModal,
     modalContent, cidadaoDetailsModal, demandaModal, demandaDetailsModal,
     mapModal, confirmationModal, cidadaoForm, demandaForm, addNoteForm,
-    searchInput, filterType, filterBairro, filterCidade, filterLeader, filterSexo,
+    searchInput, filterType, filterBairro, filterLeader, filterSexo,
     filterFaixaEtaria, clearFiltersBtn, generateReportBtn, viewMapBtn,
     demandaFilterStatus, demandaFilterLeader, demandaClearFiltersBtn,
     cidadaosGrid, allDemandasList, cidadaoLeaderSelect, demandaCidadaoSelect,
@@ -39,7 +40,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     loadMoreBtn, cidadaoLat, cidadaoLong,
     itemToDelete = { id: null, type: null }, 
     map = null, markers = [], cidadaosChart = null, demandasChart = null, 
-    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null, cidadaosMunicipioChart = null; 
+    cidadaosBairroChart = null, cidadaosSexoChart = null, cidadaosFaixaEtariaChart = null; 
 document.addEventListener('DOMContentLoaded', () => {
     const loginPage = document.getElementById('login-page');
     const appContainer = document.getElementById('app-container');
@@ -47,22 +48,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('login-btn');
     const emailInput = document.getElementById('email-address');
     const passwordInput = document.getElementById('password');
-    sb.auth.onAuthStateChange(async (event, session) => {
+    sb.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            if (!appInitialized) {
-                 await initializeMainApp(); 
+            if (!appInitialized && !_initLock) {
+                _initLock = true;
+                initializeMainApp().finally(() => { _initLock = false; });
             }
-        } else if (event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
             user = null;
+            userRole = null;
+            allCidadaos = []; allDemandas = []; allLeaders = [];
+            appInitialized = false;
+            _initLock = false;
+            // Restaura botão — independente de qual elemento está no DOM agora
+            const lb = document.getElementById('logout-btn');
+            if (lb) { lb.disabled = false; lb.innerHTML = 'Sair'; }
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
-            appInitialized = false;
-        } else if (event === 'INITIAL_SESSION' && !session) {
-            user = null;
-            appInitialized = false;
         }
     });
     loginForm.addEventListener('submit', async (e) => {
@@ -87,11 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     async function manageSessionOnLoad() {
         const { data: { session } } = await sb.auth.getSession();
-        if (session) {
+        if (session && session.user) {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            await initializeMainApp(); 
+            if (!appInitialized && !_initLock) {
+                _initLock = true;
+                try { await initializeMainApp(); }
+                finally { _initLock = false; }
+            }
         } else {
             user = null;
             loginPage.classList.remove('hidden');
@@ -101,6 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
+        allCidadaos = []; allDemandas = []; allLeaders = []; allUsers = [];
+        userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
         logoutBtn = document.getElementById('logout-btn');
@@ -128,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput = document.getElementById('search-input');
         filterType = document.getElementById('filter-type');
         filterBairro = document.getElementById('filter-bairro');
-        filterCidade = document.getElementById('filter-cidade');
         filterLeader = document.getElementById('filter-leader');
         filterSexo = document.getElementById('filter-sexo');
         filterFaixaEtaria = document.getElementById('filter-faixa-etaria');
@@ -182,24 +192,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 switchPage('dashboard-page');
             });
         }
-        // Remove listener antigo antes de adicionar novo (evita duplicatas)
-        const newLogoutBtn = logoutBtn.cloneNode(true);
-        logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-        logoutBtn = newLogoutBtn;
-        logoutBtn.addEventListener('click', async () => {
-            try {
-                logoutBtn.disabled = true;
-                await sb.auth.signOut();
-                appInitialized = false;
-                // Reseta estado global
-                allCidadaos = []; allDemandas = []; allLeaders = [];
-                totalCidadaosCount = 0; cidadaosServerOffset = 0;
-                userRole = null;
-            } catch (error) {
-                logoutBtn.disabled = false;
-                showToast("Erro ao terminar sessão.", "error");
-            }
-        });
+        // Listener de logout — flag evita duplicatas sem precisar de cloneNode
+        if (!logoutBtn._listenerAdded) {
+            logoutBtn._listenerAdded = true;
+            logoutBtn.addEventListener('click', async () => {
+                if (logoutBtn.disabled) return;
+                try {
+                    logoutBtn.disabled = true;
+                    logoutBtn.innerHTML = '<div class="spinner mx-auto"></div>';
+                    await sb.auth.signOut();
+                    // onAuthStateChange (SIGNED_OUT) restaura o botão e limpa o estado
+                } catch (error) {
+                    logoutBtn.disabled = false;
+                    logoutBtn.innerHTML = 'Sair';
+                    showToast("Erro ao terminar sessão.", "error");
+                }
+            });
+        }
         sidebarNav.addEventListener('click', (e) => {
             const link = e.target.closest('a');
             if (link) {
@@ -233,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         filterType.addEventListener('change', () => renderCidadaos());
         filterBairro.addEventListener('change', () => renderCidadaos());
-        filterCidade.addEventListener('change', () => renderCidadaos());
         filterLeader.addEventListener('change', () => renderCidadaos());
         filterSexo.addEventListener('change', () => renderCidadaos());
         filterFaixaEtaria.addEventListener('change', () => renderCidadaos());
@@ -277,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // ── PERFORMANCE: controle de estado de busca server-side ──────────────────
-    let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '' };
+    let serverSearchState = { search: '', type: '', bairro: '', leader: '', sexo: '', faixaEtaria: '' };
     const CIDADAOS_PAGE_SIZE = 12;
     let totalCidadaosCount = 0;
     let cidadaosServerOffset = 0;
@@ -389,7 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
-        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
 
@@ -786,7 +793,6 @@ document.addEventListener('DOMContentLoaded', () => {
             search:      searchInput.value.toLowerCase().trim(),
             type:        filterType.value,
             bairro:      filterBairro.value,
-            cidade:      filterCidade ? filterCidade.value : '',
             leader:      filterLeader.value,
             sexo:        filterSexo.value,
             faixaEtaria: filterFaixaEtaria.value
@@ -878,7 +884,6 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = '';
         filterType.value = '';
         filterBairro.value = '';
-        if (filterCidade) filterCidade.value = '';
         filterLeader.value = '';
         filterSexo.value = '';
         filterFaixaEtaria.value = '';
@@ -907,7 +912,6 @@ document.addEventListener('DOMContentLoaded', () => {
         await Promise.all([
             updateAniversariantes(),
             updateCidadaosPorBairroChart(),
-            updateCidadaosPorMunicipioChart(),
             updateCidadaosPorSexoChart(),
             updateCidadaosPorFaixaEtariaChart()
         ]);
@@ -1040,50 +1044,6 @@ document.addEventListener('DOMContentLoaded', () => {
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
-    async function updateCidadaosPorMunicipioChart() {
-        const ctx = document.getElementById('cidadaos-por-municipio-chart');
-        if (!ctx) return;
-        try {
-            const { data, error } = await sb
-                .from('cidadaos')
-                .select('cidade');
-            if (error) throw error;
-            const contagem = (data || []).reduce((acc, c) => {
-                const cidade = c.cidade || 'Não Informado';
-                acc[cidade] = (acc[cidade] || 0) + 1;
-                return acc;
-            }, {});
-            const sorted = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
-            const labels = sorted.map(([k]) => k);
-            const values = sorted.map(([, v]) => v);
-            const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316'];
-            if (cidadaosMunicipioChart) cidadaosMunicipioChart.destroy();
-            cidadaosMunicipioChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels,
-                    datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                    const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                                    return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        } catch(e) { console.warn('Chart município:', e); }
-    }
-
     async function updateCidadaosPorBairroChart() {
         const ctx = document.getElementById('cidadaos-por-bairro-chart');
         if (!ctx) return;
@@ -1470,7 +1430,6 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
-        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
@@ -1508,7 +1467,6 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
-        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
