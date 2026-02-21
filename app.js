@@ -21,7 +21,6 @@ let currentCidadaoIdForDetails = null;
 let currentEditingDemandaId = null;
 let viewingDemandaId = null;
 let appInitialized = false;
-let _initLock = false;
 let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     closeModalBtn, cancelBtn, saveBtn, closeDetailsModalBtn, closeDemandaModalBtn,
     cancelDemandaBtn, closeDemandaDetailsBtn, closeMapBtn, cidadaoModal,
@@ -53,20 +52,14 @@ document.addEventListener('DOMContentLoaded', () => {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            if (!appInitialized && !_initLock) {
-                _initLock = true;
-                initializeMainApp().finally(() => { _initLock = false; });
+            if (!appInitialized) {
+                 await initializeMainApp(); 
             }
         } else if (event === 'SIGNED_OUT') {
             user = null;
-            userRole = null;
-            allCidadaos = []; allDemandas = []; allLeaders = [];
-            appInitialized = false;
-            // Restaura o botão de logout para o estado normal
-            const lb = document.getElementById('logout-btn');
-            if (lb) { lb.disabled = false; lb.innerHTML = 'Sair'; }
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
+            appInitialized = false;
         } else if (event === 'INITIAL_SESSION' && !session) {
             user = null;
             appInitialized = false;
@@ -94,15 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     async function manageSessionOnLoad() {
         const { data: { session } } = await sb.auth.getSession();
-        if (session && session.user) {
+        if (session) {
             user = session.user;
             loginPage.classList.add('hidden');
             appContainer.style.display = 'flex';
-            if (!appInitialized && !_initLock) {
-                _initLock = true;
-                try { await initializeMainApp(); }
-                finally { _initLock = false; }
-            }
+            await initializeMainApp(); 
         } else {
             user = null;
             loginPage.classList.remove('hidden');
@@ -112,8 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        allCidadaos = []; allDemandas = []; allLeaders = []; allUsers = [];
-        userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
         logoutBtn = document.getElementById('logout-btn');
@@ -296,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadInitialData() {
         if (!user) return;
         try {
-            // ── Busca o perfil do utilizador (admin ou cadastrador) ──────
+            // ── 1. Perfil primeiro — define userRole antes de tudo ───────
             const { data: profileData, error: profileError } = await sb
                 .from('profiles')
                 .select('role')
@@ -310,36 +297,33 @@ document.addEventListener('DOMContentLoaded', () => {
             userRole = profileData.role;
             applyRoleUI();
 
-            // Carrega apenas lideranças para popular selects
-            const { data: leadersData, error: leadersError } = await sb
-                .from('cidadaos')
-                .select('id, name, type')
-                .eq('type', 'Liderança')
-                .order('name', { ascending: true });
-            if (leadersError) throw leadersError;
-            allLeaders = leadersData;
-
-            // Carrega demandas com JOIN no cidadao para trazer nome e leader
-            // Isso evita depender de allCidadaos (que só tem a página atual)
-            const { data: demandasData, error: demandasError } = await sb
-                .from('demandas')
-                .select('*, cidadao:cidadaos(id, name, leader)')
-                .order('created_at', { ascending: false });
-            if (demandasError) throw demandasError;
-            allDemandas = demandasData;
-
-            // Carrega bairros distintos para o filtro
-            await loadBairrosDistintos();
+            // ── 2. Líderes + demandas + bairros em paralelo ──────────────
+            const [leadersRes, demandasRes] = await Promise.all([
+                sb.from('cidadaos')
+                    .select('id, name, type')
+                    .eq('type', 'Liderança')
+                    .order('name', { ascending: true }),
+                sb.from('demandas')
+                    .select('*, cidadao:cidadaos(id, name, leader)')
+                    .order('created_at', { ascending: false }),
+                loadBairrosDistintos()
+            ]);
+            if (leadersRes.error) throw leadersRes.error;
+            if (demandasRes.error) throw demandasRes.error;
+            allLeaders = leadersRes.data;
+            allDemandas = demandasRes.data;
 
             updateLeaderSelects();
             updateBairroFilter();
-
-            // Primeira página de cidadãos (server-side)
-            await loadCidadaosPage(true);
-
             renderAllDemandas();
-            await updateDashboard();
-            if (userRole === 'admin') await loadUsers();
+
+            // ── 3. Cidadãos + dashboard + utilizadores em paralelo ───────
+            await Promise.all([
+                loadCidadaosPage(true),
+                updateDashboard(),
+                userRole === 'admin' ? loadUsers() : Promise.resolve()
+            ]);
+
             return true;
         } catch (error) {
             console.error(error);
@@ -911,13 +895,16 @@ document.addEventListener('DOMContentLoaded', () => {
             totalEl.textContent = totalCidadaosCount;
         }
         document.getElementById('dashboard-total-demandas').textContent = allDemandas.length;
-        await updateAniversariantes();
+        // Gráficos e widgets em paralelo — não dependem uns dos outros
         updateDemandasRecentes();
         updateCidadaosPorTipoChart();
         updateDemandasPorStatusChart();
-        updateCidadaosPorBairroChart();
-        updateCidadaosPorSexoChart();
-        updateCidadaosPorFaixaEtariaChart();
+        await Promise.all([
+            updateAniversariantes(),
+            updateCidadaosPorBairroChart(),
+            updateCidadaosPorSexoChart(),
+            updateCidadaosPorFaixaEtariaChart()
+        ]);
     }
     async function updateAniversariantes() {
         const listEl = document.getElementById('aniversariantes-list');
