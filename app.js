@@ -27,7 +27,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     cancelDemandaBtn, closeDemandaDetailsBtn, closeMapBtn, cidadaoModal,
     modalContent, cidadaoDetailsModal, demandaModal, demandaDetailsModal,
     mapModal, confirmationModal, cidadaoForm, demandaForm, addNoteForm,
-    searchInput, filterType, filterBairro, filterLeader, filterSexo,
+    searchInput, filterType, filterBairro, filterCidade, filterLeader, filterSexo,
     filterFaixaEtaria, clearFiltersBtn, generateReportBtn, viewMapBtn,
     demandaFilterStatus, demandaFilterLeader, demandaClearFiltersBtn,
     cidadaosGrid, allDemandasList, cidadaoLeaderSelect, demandaCidadaoSelect,
@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput = document.getElementById('search-input');
         filterType = document.getElementById('filter-type');
         filterBairro = document.getElementById('filter-bairro');
+        filterCidade = document.getElementById('filter-cidade');
         filterLeader = document.getElementById('filter-leader');
         filterSexo = document.getElementById('filter-sexo');
         filterFaixaEtaria = document.getElementById('filter-faixa-etaria');
@@ -242,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         filterType.addEventListener('change', () => renderCidadaos());
         filterBairro.addEventListener('change', () => renderCidadaos());
+        if (filterCidade) filterCidade.addEventListener('change', () => renderCidadaos());
         filterLeader.addEventListener('change', () => renderCidadaos());
         filterSexo.addEventListener('change', () => renderCidadaos());
         filterFaixaEtaria.addEventListener('change', () => renderCidadaos());
@@ -285,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // ── PERFORMANCE: controle de estado de busca server-side ──────────────────
-    let serverSearchState = { search: '', type: '', bairro: '', leader: '', sexo: '', faixaEtaria: '' };
+    let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '' };
     const CIDADAOS_PAGE_SIZE = 12;
     let totalCidadaosCount = 0;
     let cidadaosServerOffset = 0;
@@ -397,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
 
@@ -793,6 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
             search:      searchInput.value.toLowerCase().trim(),
             type:        filterType.value,
             bairro:      filterBairro.value,
+            cidade:      filterCidade ? filterCidade.value : '',
             leader:      filterLeader.value,
             sexo:        filterSexo.value,
             faixaEtaria: filterFaixaEtaria.value
@@ -884,6 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = '';
         filterType.value = '';
         filterBairro.value = '';
+        if (filterCidade) filterCidade.value = '';
         filterLeader.value = '';
         filterSexo.value = '';
         filterFaixaEtaria.value = '';
@@ -912,6 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await Promise.all([
             updateAniversariantes(),
             updateCidadaosPorBairroChart(),
+            updateCidadaosPorMunicipioChart(),
             updateCidadaosPorSexoChart(),
             updateCidadaosPorFaixaEtariaChart()
         ]);
@@ -1044,6 +1050,43 @@ document.addEventListener('DOMContentLoaded', () => {
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
+    async function updateCidadaosPorMunicipioChart() {
+        const ctx = document.getElementById('cidadaos-por-municipio-chart');
+        if (!ctx) return;
+        try {
+            const { data, error } = await sb.from('cidadaos').select('cidade');
+            if (error) throw error;
+            const contagem = (data || []).reduce((acc, c) => {
+                const cidade = c.cidade || 'Não Informado';
+                acc[cidade] = (acc[cidade] || 0) + 1;
+                return acc;
+            }, {});
+            const sorted = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(([k]) => k);
+            const values = sorted.map(([, v]) => v);
+            const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316'];
+            if (cidadaosMunicipioChart) cidadaosMunicipioChart.destroy();
+            cidadaosMunicipioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => {
+                                    const total = c.dataset.data.reduce((a, b) => a + b, 0);
+                                    return ` ${c.label}: ${c.parsed} (${((c.parsed/total)*100).toFixed(1)}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch(e) { console.warn('Chart município:', e); }
+    }
+
     async function updateCidadaosPorBairroChart() {
         const ctx = document.getElementById('cidadaos-por-bairro-chart');
         if (!ctx) return;
@@ -1430,6 +1473,7 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
@@ -1467,6 +1511,7 @@ function closeMapModal() {
         if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
+        if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
         query = query.order('name', { ascending: true });
