@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filtros aplicados no servidor
         if (s.search) {
-            query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
+            query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%,voterid.ilike.%${s.search}%`);
         }
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
@@ -497,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dob: cidadaoDob.value || null,
             sexo: cidadaoSexo.value || null,
             type: cidadaoType.value || 'Outro',
-            leader: cidadaoLeaderSelect.value || null,
+            leader: (document.getElementById('cidadao-leader') || cidadaoLeaderSelect)?.value || null,
             cpf: cpf,
             rg: v(cidadaoRG.value),
             voterid: voterid,
@@ -863,18 +863,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     function updateLeaderSelects() {
-        const selects = [cidadaoLeaderSelect, filterLeader, demandaFilterLeader];
+        // Filtro e demanda — selects normais, ordenados alfabeticamente
+        const selects = [filterLeader, demandaFilterLeader];
         selects.forEach(select => {
             if (!select) return;
             const currentValue = select.value;
-            select.innerHTML = `<option value="">${select.id === 'cidadao-leader' ? 'Nenhuma' : 'Filtrar por Liderança'}</option>`;
-            allLeaders.forEach(leader => {
+            select.innerHTML = '<option value="">Filtrar por Liderança</option>';
+            [...allLeaders].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).forEach(l => {
                 const option = document.createElement('option');
-                option.value = leader.id;
-                option.textContent = leader.name;
+                option.value = l.id;
+                option.textContent = l.name;
                 select.appendChild(option);
             });
             select.value = currentValue;
+        });
+        // Autocomplete de liderança no modal de cadastro
+        setupLeaderAutocomplete();
+    }
+
+    function setupLeaderAutocomplete() {
+        const searchInput = document.getElementById('cidadao-leader-search');
+        const dropdown = document.getElementById('cidadao-leader-dropdown');
+        const hiddenInput = document.getElementById('cidadao-leader');
+        if (!searchInput || !dropdown || !hiddenInput) return;
+        if (searchInput._autocompleteReady) return;
+        searchInput._autocompleteReady = true;
+
+        const sorted = [...allLeaders].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+        function showDropdown(term) {
+            const filtered = term
+                ? sorted.filter(l => l.name.toLowerCase().includes(term.toLowerCase()))
+                : sorted;
+            dropdown.innerHTML = '';
+            const none = document.createElement('div');
+            none.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 text-gray-500 text-sm';
+            none.textContent = 'Nenhuma';
+            none.addEventListener('mousedown', () => {
+                hiddenInput.value = '';
+                searchInput.value = '';
+                dropdown.classList.add('hidden');
+            });
+            dropdown.appendChild(none);
+            filtered.forEach(l => {
+                const item = document.createElement('div');
+                item.className = 'px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm';
+                item.textContent = l.name;
+                item.addEventListener('mousedown', () => {
+                    hiddenInput.value = l.id;
+                    searchInput.value = l.name;
+                    dropdown.classList.add('hidden');
+                });
+                dropdown.appendChild(item);
+            });
+            dropdown.classList.toggle('hidden', filtered.length === 0 && !term);
+        }
+
+        searchInput.addEventListener('input', () => showDropdown(searchInput.value));
+        searchInput.addEventListener('focus', () => showDropdown(searchInput.value));
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => dropdown.classList.add('hidden'), 150);
+            const match = sorted.find(l => l.name.toLowerCase() === searchInput.value.toLowerCase());
+            if (!match) { hiddenInput.value = ''; searchInput.value = ''; }
         });
     }
     function updateBairroFilter() {
@@ -1210,7 +1260,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 cidadaoDob.value = cidadao.dob || '';
                 cidadaoSexo.value = cidadao.sexo || 'Não Informar';
                 cidadaoType.value = cidadao.type || 'Outro';
-                cidadaoLeaderSelect.value = cidadao.leader || '';
+                // Autocomplete liderança — preenche texto e valor oculto
+                const leaderHidden = document.getElementById('cidadao-leader');
+                const leaderSearch = document.getElementById('cidadao-leader-search');
+                if (leaderHidden && leaderSearch) {
+                    leaderHidden.value = cidadao.leader || '';
+                    const ldr = allLeaders.find(l => l.id === cidadao.leader);
+                    leaderSearch.value = ldr ? ldr.name : '';
+                }
                 cidadaoCPF.value = cidadao.cpf || '';
                 cidadaoRG.value = cidadao.rg || '';
                 cidadaoVoterId.value = cidadao.voterid || '';
@@ -1240,6 +1297,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { modalContent.classList.remove('scale-95', 'opacity-0'); }, 10);
     }
     function closeCidadaoModal() {
+        const leaderSearch = document.getElementById('cidadao-leader-search');
+        const leaderHidden = document.getElementById('cidadao-leader');
+        if (leaderSearch) { leaderSearch.value = ''; leaderSearch._autocompleteReady = false; }
+        if (leaderHidden) leaderHidden.value = '';
         modalContent.classList.add('scale-95', 'opacity-0');
         setTimeout(() => { cidadaoModal.classList.add('hidden'); }, 300);
     }
@@ -1528,7 +1589,7 @@ function closeMapModal() {
         showToast("A gerar relatório...", "info");
         const s = serverSearchState;
         let query = sb.from('cidadaos').select('name, type, phone, whatsapp, email, logradouro, numero, complemento, bairro, cidade, estado, cep');
-        if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
+        if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%,voterid.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
         if (s.cidade)  query = query.eq('cidade', s.cidade);
@@ -1564,9 +1625,9 @@ function closeMapModal() {
         showToast("A gerar Excel...", "info");
         const s = serverSearchState;
         let query = sb.from('cidadaos').select(
-            'name, cpf, rg, voterid, dob, sexo, type, phone, whatsapp, email, profissao, localtrabalho, logradouro, numero, complemento, bairro, cidade, estado, cep'
+            'name, cpf, rg, voterid, zona, secao, dob, sexo, type, phone, whatsapp, email, profissao, localtrabalho, logradouro, numero, complemento, bairro, cidade, estado, cep'
         );
-        if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%`);
+        if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%,voterid.ilike.%${s.search}%`);
         if (s.type)    query = query.eq('type', s.type);
         if (s.bairro)  query = query.eq('bairro', s.bairro);
         if (s.cidade)  query = query.eq('cidade', s.cidade);
@@ -1582,7 +1643,7 @@ function closeMapModal() {
 
         // Cabeçalhos do Excel
         const headers = [
-            'Nome', 'CPF', 'RG', 'Título de Eleitor', 'Data Nasc.', 'Sexo', 'Tipo',
+            'Nome', 'CPF', 'RG', 'Título de Eleitor', 'Zona', 'Seção', 'Data Nasc.', 'Sexo', 'Tipo',
             'Telefone', 'WhatsApp', 'Email', 'Profissão', 'Local de Trabalho',
             'Logradouro', 'Número', 'Complemento', 'Bairro', 'Cidade', 'Estado', 'CEP'
         ];
@@ -1592,6 +1653,8 @@ function closeMapModal() {
             c.cpf || '',
             c.rg || '',
             c.voterid || '',
+            c.zona || '',
+            c.secao || '',
             c.dob ? formatarData(c.dob) : '',
             c.sexo || '',
             c.type || '',
