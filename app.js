@@ -29,7 +29,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     mapModal, confirmationModal, cidadaoForm, demandaForm, addNoteForm,
     searchInput, filterType, filterBairro, filterCidade, filterLeader, filterSexo,
     filterFaixaEtaria, clearFiltersBtn, generateReportBtn, viewMapBtn,
-    demandaFilterStatus, demandaFilterLeader, demandaClearFiltersBtn,
+    demandaFilterStatus, demandaFilterLeader, demandaSearchNome, demandaClearFiltersBtn,
     cidadaosGrid, allDemandasList, cidadaoLeaderSelect, demandaCidadaoSelect,
     cancelDeleteBtn, confirmDeleteBtn, cidadaoName, cidadaoEmail, cidadaoDob,
     cidadaoSexo, cidadaoType, cidadaoCPF, cidadaoRG, cidadaoVoterId,
@@ -147,8 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clearFiltersBtn = document.getElementById('clear-filters-btn');
         generateReportBtn = document.getElementById('generate-report-btn');
         viewMapBtn = document.getElementById('view-map-btn');
-        demandaFilterStatus = document.getElementById('demanda-filter-status');
-        demandaFilterLeader = document.getElementById('demanda-filter-leader');
+        demandaFilterStatus  = document.getElementById('demanda-filter-status');
+        demandaFilterLeader  = document.getElementById('demanda-filter-leader');
+        demandaSearchNome    = document.getElementById('demanda-search-nome');
         demandaClearFiltersBtn = document.getElementById('demanda-clear-filters-btn');
         cidadaosGrid = document.getElementById('cidadaos-grid');
         loadMoreBtn = document.getElementById('load-more-btn');
@@ -254,7 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         clearFiltersBtn.addEventListener('click', clearCidadaoFilters);
         loadMoreBtn.addEventListener('click', renderMoreCidadaos);
         demandaFilterStatus.addEventListener('change', () => loadDemandasPage(true));
-        demandaFilterLeader.addEventListener('change', () => loadDemandasPage(true));
+        demandaFilterLeader.addEventListener('change',  () => loadDemandasPage(true));
+        demandaSearchNome?.addEventListener('input', () => {
+            clearTimeout(demandaSearchNome._t);
+            demandaSearchNome._t = setTimeout(() => loadDemandasPage(true), 400);
+        });
         demandaClearFiltersBtn.addEventListener('click', clearDemandaFilters);
         document.getElementById('demandas-load-more-btn')?.addEventListener('click', () => loadDemandasPage(false));
         generateReportBtn.addEventListener('click', generatePrintReport);
@@ -881,18 +886,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
         demandasSearchState = {
             status: demandaFilterStatus?.value || '',
-            leader: demandaFilterLeader?.value || ''
+            leader: demandaFilterLeader?.value || '',
+            nome:   demandaSearchNome?.value.trim() || ''
         };
 
         try {
-            // Query com count exacto para o total
+            // ── PASSO 1: pré-filtro por liderança e/ou nome do solicitante ──
+            // O Supabase NÃO suporta .eq() em colunas de relações (JOINs).
+            // Filtrar por leader diretamente causaria cidadao: null nos resultados.
+            // Solução: buscar os cidadao_ids que correspondem ao critério, depois .in()
+            let cidadaoIdsFilter = null;
+
+            if (demandasSearchState.leader || demandasSearchState.nome) {
+                let qCid = sb.from('cidadaos').select('id');
+                if (demandasSearchState.leader)
+                    qCid = qCid.eq('leader', demandasSearchState.leader);
+                if (demandasSearchState.nome)
+                    qCid = qCid.ilike('name', `%${demandasSearchState.nome}%`);
+
+                const { data: cids, error: eCid } = await qCid;
+                if (eCid) throw eCid;
+
+                cidadaoIdsFilter = (cids || []).map(c => c.id);
+
+                // Zero correspondências — resultado imediato sem query adicional
+                if (cidadaoIdsFilter.length === 0) {
+                    allDemandas = [];
+                    if (reset) allDemandasList.innerHTML = '';
+                    allDemandasList.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhuma demanda encontrada para este filtro.</p>';
+                    const label = document.getElementById('demandas-count-label');
+                    if (label) label.textContent = '0 demanda(s) encontrada(s)';
+                    document.getElementById('demandas-load-more-wrap')?.classList.add('hidden');
+                    return;
+                }
+            }
+
+            // ── PASSO 2: query principal com JOIN limpo ──────────────────────
+            // O select do cidadao usa apenas id e name — sem filtros na relação,
+            // garantindo que o JOIN sempre retorna os dados correctamente.
             let query = sb.from('demandas')
-                .select('*, cidadao:cidadaos(id, name, leader)', { count: 'exact' })
+                .select('id, title, description, status, created_at, updated_at, cidadao_id, cidadao:cidadaos(id, name)', { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .range(demandasServerOffset, demandasServerOffset + DEMANDAS_PAGE_SIZE - 1);
 
-            if (demandasSearchState.status) query = query.eq('status', demandasSearchState.status);
-            if (demandasSearchState.leader) query = query.eq('cidadao.leader', demandasSearchState.leader);
+            if (demandasSearchState.status)   query = query.eq('status', demandasSearchState.status);
+            if (cidadaoIdsFilter !== null)     query = query.in('cidadao_id', cidadaoIdsFilter);
 
             const { data, error, count } = await query;
             if (error) throw error;
@@ -918,7 +956,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Contador
             const label = document.getElementById('demandas-count-label');
             if (label) {
-                const temFiltro = demandasSearchState.status || demandasSearchState.leader;
+                const temFiltro = demandasSearchState.status || demandasSearchState.leader || demandasSearchState.nome;
                 label.textContent = temFiltro
                     ? `${allDemandas.length} demanda(s) encontrada(s)`
                     : `Exibindo ${allDemandas.length} de ${totalDemandasCount} demanda(s)`;
@@ -1078,6 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearDemandaFilters() {
         demandaFilterStatus.value = '';
         demandaFilterLeader.value = '';
+        if (demandaSearchNome) demandaSearchNome.value = '';
         loadDemandasPage(true);
     }
     async function updateDashboard() {
