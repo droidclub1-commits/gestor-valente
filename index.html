@@ -182,10 +182,11 @@
                           <div><h1 class="text-2xl font-bold text-gray-800">Central de Demandas</h1><p class="text-gray-600">Visualize e gerencie todas as solicitações.</p></div>
                           <button id="add-demanda-geral-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">Adicionar Nova Demanda</button>
                      </div>
-                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <select id="demanda-filter-status" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Status</option><option value="pending">Pendente</option><option value="inprogress">Em Andamento</option><option value="completed">Concluída</option></select>
-                          <select id="demanda-filter-leader" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Liderança</option></select>
-                          <button id="demanda-clear-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg">Limpar Filtros</button>
+                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                          <input type="text" id="demanda-search-nome" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="&#x1F50D; Buscar por solicitante..." autocomplete="off">
+                          <select id="demanda-filter-status" class="w-full border-gray-300 rounded-lg bg-white text-sm px-2 py-2"><option value="">Todos os Status</option><option value="pending">Pendente</option><option value="inprogress">Em Andamento</option><option value="completed">Concluída</option></select>
+                          <select id="demanda-filter-leader" class="w-full border-gray-300 rounded-lg bg-white text-sm px-2 py-2"><option value="">Todas as Lideranças</option></select>
+                          <button id="demanda-clear-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg text-sm">Limpar Filtros</button>
                      </div>
                 </header>
                 <div class="flex-1 p-6 overflow-y-auto">
