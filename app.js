@@ -496,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             email: v(cidadaoEmail.value),
             dob: cidadaoDob.value || null,
             sexo: cidadaoSexo.value || null,
-            type: cidadaoType.value || null,
+            type: cidadaoType.value || 'Outro',
             leader: cidadaoLeaderSelect.value || null,
             cpf: cpf,
             rg: v(cidadaoRG.value),
@@ -1209,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cidadaoEmail.value = cidadao.email || '';
                 cidadaoDob.value = cidadao.dob || '';
                 cidadaoSexo.value = cidadao.sexo || 'Não Informar';
-                cidadaoType.value = cidadao.type || 'Cidadão Comum';
+                cidadaoType.value = cidadao.type || 'Outro';
                 cidadaoLeaderSelect.value = cidadao.leader || '';
                 cidadaoCPF.value = cidadao.cpf || '';
                 cidadaoRG.value = cidadao.rg || '';
