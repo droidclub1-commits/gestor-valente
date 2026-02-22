@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterType = document.getElementById('filter-type');
         filterBairro = document.getElementById('filter-bairro');
         filterCidade = document.getElementById('filter-cidade');
+        filterCidade = document.getElementById('filter-cidade');
         filterLeader = document.getElementById('filter-leader');
         filterSexo = document.getElementById('filter-sexo');
         filterFaixaEtaria = document.getElementById('filter-faixa-etaria');
@@ -164,6 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
         cidadaoCPF = document.getElementById('cidadao-cpf');
         cidadaoRG = document.getElementById('cidadao-rg');
         cidadaoVoterId = document.getElementById('cidadao-voterid');
+        cidadaoZona = document.getElementById('cidadao-zona');
+        cidadaoSecao = document.getElementById('cidadao-secao');
         cidadaoPhone = document.getElementById('cidadao-phone');
         cidadaoWhatsapp = document.getElementById('cidadao-whatsapp');
         cidadaoProfissao = document.getElementById('cidadao-profissao');
@@ -243,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         filterType.addEventListener('change', () => renderCidadaos());
         filterBairro.addEventListener('change', () => renderCidadaos());
+        if (filterCidade) filterCidade.addEventListener('change', () => renderCidadaos());
         if (filterCidade) filterCidade.addEventListener('change', () => renderCidadaos());
         filterLeader.addEventListener('change', () => renderCidadaos());
         filterSexo.addEventListener('change', () => renderCidadaos());
@@ -456,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById('save-btn');
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<div class="spinner"></div>';
-    const cpf = cidadaoCPF.value.trim();
-    const voterid = cidadaoVoterId.value.trim();
+    const cpf = cidadaoCPF.value.trim() || null;
+    const voterid = cidadaoVoterId.value.trim() || null;
     try {
         let photoUrl = cidadaoPhotoUrl.value;
         const file = cidadaoPhotoUpload.files[0];
@@ -486,30 +490,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(geocodeError);
             }
         }
+        const v = s => s && s.trim() ? s.trim() : null; // helper: vazio → null
         const cidadaoData = {
-            name: cidadaoName.value,
-            email: cidadaoEmail.value,
+            name: cidadaoName.value.trim(), // único obrigatório
+            email: v(cidadaoEmail.value),
             dob: cidadaoDob.value || null,
-            sexo: cidadaoSexo.value,
-            type: cidadaoType.value,
+            sexo: cidadaoSexo.value || null,
+            type: cidadaoType.value || null,
             leader: cidadaoLeaderSelect.value || null,
             cpf: cpf,
-            rg: cidadaoRG.value,
+            rg: v(cidadaoRG.value),
             voterid: voterid,
-            phone: cidadaoPhone.value,
+            zona: cidadaoZona ? v(cidadaoZona.value) : null,
+            secao: cidadaoSecao ? v(cidadaoSecao.value) : null,
+            phone: v(cidadaoPhone.value),
             whatsapp: cidadaoWhatsapp.checked,
-            profissao: cidadaoProfissao.value,
-            cep: cidadaoCEP.value,
-            logradouro: cidadaoLogradouro.value,
-            numero: cidadaoNumero.value,
-            complemento: cidadaoComplemento.value,
-            bairro: cidadaoBairro.value,
-            cidade: cidadaoCidade.value,
-            estado: cidadaoEstado.value,
+            profissao: v(cidadaoProfissao.value),
+            cep: v(cidadaoCEP.value),
+            logradouro: v(cidadaoLogradouro.value),
+            numero: v(cidadaoNumero.value),
+            complemento: v(cidadaoComplemento.value),
+            bairro: v(cidadaoBairro.value),
+            cidade: v(cidadaoCidade.value),
+            estado: v(cidadaoEstado.value),
             sons: parseInt(cidadaoSons.value, 10) || 0,
             daughters: parseInt(cidadaoDaughters.value, 10) || 0,
             children: getChildrenData(),
-            localtrabalho: cidadaoLocalTrabalho.value,
+            localtrabalho: v(cidadaoLocalTrabalho.value),
             photourl: photoUrl || null,
             latitude: lat,
             longitude: long, 
@@ -918,6 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAniversariantes(),
             updateCidadaosPorBairroChart(),
             updateCidadaosPorMunicipioChart(),
+            updateCidadaosPorMunicipioChart(),
             updateCidadaosPorSexoChart(),
             updateCidadaosPorFaixaEtariaChart()
         ]);
@@ -1081,6 +1089,39 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                         }
+                    }
+                }
+            });
+        } catch(e) { console.warn('Chart município:', e); }
+    }
+
+    async function updateCidadaosPorMunicipioChart() {
+        const ctx = document.getElementById('cidadaos-por-municipio-chart');
+        if (!ctx) return;
+        try {
+            const { data, error } = await sb.from('cidadaos').select('cidade');
+            if (error) throw error;
+            const contagem = (data || []).reduce((acc, c) => {
+                const cidade = c.cidade || 'Não Informado';
+                acc[cidade] = (acc[cidade] || 0) + 1;
+                return acc;
+            }, {});
+            const sorted = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(([k]) => k);
+            const values = sorted.map(([, v]) => v);
+            const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316'];
+            if (cidadaosMunicipioChart) cidadaosMunicipioChart.destroy();
+            cidadaosMunicipioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: (c) => {
+                            const total = c.dataset.data.reduce((a, b) => a + b, 0);
+                            return ` ${c.label}: ${c.parsed} (${((c.parsed/total)*100).toFixed(1)}%)`;
+                        }}}
                     }
                 }
             });
@@ -1290,7 +1331,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('details-address').textContent = addressParts.join(', ') || 'Não informado';
         document.getElementById('details-cpf').textContent = cidadao.cpf || 'Não informado';
         document.getElementById('details-rg').textContent = cidadao.rg || 'Não informado';
-        document.getElementById('details-voterid').textContent = cidadao.voterid || 'Não informado';
+        const voterId = cidadao.voterid || '';
+        const zona = cidadao.zona || '';
+        const secao = cidadao.secao || '';
+        let voterText = voterId || 'Não informado';
+        if (zona || secao) voterText += ` | Zona: ${zona || '—'} | Seção: ${secao || '—'}`;
+        document.getElementById('details-voterid').textContent = voterText;
         document.getElementById('details-dob').textContent = cidadao.dob ? formatarData(cidadao.dob) : 'Não informado';
         document.getElementById('details-sexo').textContent = cidadao.sexo || 'Não Informar';
         document.getElementById('details-profissao').textContent = cidadao.profissao || 'Não informado';
