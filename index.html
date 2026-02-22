@@ -218,9 +218,11 @@
                         </select>
                         <input type="text" id="cobertura-filter-zona" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32" placeholder="Zona">
                         <input type="text" id="cobertura-filter-secao" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32" placeholder="Seção">
-                        <select id="cobertura-filter-lider" class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm min-w-48">
-                            <option value="">Todas as Lideranças</option>
-                        </select>
+                        <div class="relative">
+                            <input type="text" id="cobertura-lider-search" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-52" placeholder="Buscar liderança..." autocomplete="off">
+                            <div id="cobertura-lider-dropdown" class="absolute z-50 w-64 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto hidden"></div>
+                            <input type="hidden" id="cobertura-filter-lider" value="">
+                        </div>
                         <button id="cobertura-load-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Buscar</button>
                         <button id="cobertura-clear-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm">Limpar</button>
                     </div>
