@@ -68,6 +68,8 @@
                     <li><a href="#demandas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Demandas</a></li>
                     <li><a href="#mapa" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Mapa</a></li>
                     <li><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
+                    <li><a href="#cobertura" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Cobertura Eleitoral</a></li>
+                    <li><a href="#backup" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a></li>
                 </ul>
             </nav>
             <div class="p-4 mt-auto border-t border-slate-700">
@@ -138,6 +140,8 @@
                           <select id="filter-type" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Tipo</option><option>Apoiador</option><option>Liderança</option><option>Eleitor</option><option>Candidato</option><option>Outro</option></select>
                           <select id="filter-cidade" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Município</option><option value="Macapá">Macapá</option><option value="Santana">Santana</option><option value="Laranjal do Jari">Laranjal do Jari</option><option value="Oiapoque">Oiapoque</option><option value="Mazagão">Mazagão</option><option value="Porto Grande">Porto Grande</option><option value="Tartarugalzinho">Tartarugalzinho</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option><option value="Calçoene">Calçoene</option><option value="Amapá">Amapá</option><option value="Cutias">Cutias</option><option value="Ferreira Gomes">Ferreira Gomes</option><option value="Itaubal">Itaubal</option><option value="Serra do Navio">Serra do Navio</option><option value="Vitória do Jari">Vitória do Jari</option><option value="Pracuúba">Pracuúba</option></select>
                           <select id="filter-bairro" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Bairro</option></select>
+                          <input type="text" id="filter-zona" class="w-full border border-gray-300 rounded-lg bg-white px-3 py-2 text-sm" placeholder="Filtrar por Zona (ex: 42)">
+                          <input type="text" id="filter-secao" class="w-full border border-gray-300 rounded-lg bg-white px-3 py-2 text-sm" placeholder="Filtrar por Seção (ex: 156)">
                           <select id="filter-leader" class="w-full border-gray-300 rounded-lg bg-white"><option value="">Filtrar por Liderança</option></select>
                           <select id="filter-sexo" class="w-full border-gray-300 rounded-lg bg-white">
                                <option value="">Filtrar por Sexo</option>
@@ -191,6 +195,88 @@
                 </div>
             </main>
         </div>
+
+        <!-- PÁGINA COBERTURA ELEITORAL -->
+        <main id="cobertura-page" class="page hidden flex flex-col flex-1 overflow-hidden">
+            <header class="bg-white p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <div><h1 class="text-2xl font-bold text-gray-800">Cobertura Eleitoral</h1><p class="text-gray-600">Cidadãos cadastrados por Zona e Seção eleitoral.</p></div>
+                    <button id="cobertura-excel-btn" class="bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Exportar Excel
+                    </button>
+                </div>
+                <div class="flex gap-3 mt-4 flex-wrap">
+                    <select id="cobertura-filter-cidade" class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm">
+                        <option value="">Todos os Municípios</option>
+                        <option value="Macapá">Macapá</option><option value="Santana">Santana</option>
+                        <option value="Laranjal do Jari">Laranjal do Jari</option><option value="Oiapoque">Oiapoque</option>
+                        <option value="Mazagão">Mazagão</option><option value="Porto Grande">Porto Grande</option>
+                        <option value="Tartarugalzinho">Tartarugalzinho</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option>
+                        <option value="Calçoene">Calçoene</option><option value="Amapá">Amapá</option>
+                    </select>
+                    <input type="text" id="cobertura-filter-zona" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-36" placeholder="Zona (ex: 42)">
+                    <input type="text" id="cobertura-filter-secao" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-36" placeholder="Seção (ex: 156)">
+                    <button id="cobertura-load-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Buscar</button>
+                </div>
+            </header>
+            <div class="flex-1 p-6 overflow-y-auto">
+                <div id="cobertura-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-600">Município</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-600">Zona</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-600">Seção</th>
+                                <th class="text-center px-4 py-3 font-semibold text-gray-600">Cidadãos</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-600">Tipos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cobertura-tbody" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                    <div id="cobertura-empty" class="hidden text-center py-16 text-gray-400">
+                        <p class="text-lg">Clique em "Buscar" para carregar os dados.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- PÁGINA BACKUP -->
+        <main id="backup-page" class="page hidden flex flex-col flex-1 overflow-hidden">
+            <header class="bg-white p-6 border-b">
+                <h1 class="text-2xl font-bold text-gray-800">Backup de Dados</h1>
+                <p class="text-gray-600">Exporte uma cópia completa dos seus dados para guardar em segurança.</p>
+            </header>
+            <div class="flex-1 p-6 overflow-y-auto">
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                        <strong>Como funciona:</strong> Os dados são exportados directamente do Supabase para o seu computador em formato JSON e CSV. Guarde os ficheiros num local seguro — Google Drive, Dropbox, pen USB ou email.
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-1">Backup Completo</h2>
+                        <p class="text-sm text-gray-500 mb-4">Exporta <strong>todos os cidadãos e demandas</strong> sem filtros.</p>
+                        <div class="flex gap-3 flex-wrap">
+                            <button id="backup-json-btn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                Baixar JSON
+                            </button>
+                            <button id="backup-csv-btn" class="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                Baixar CSV (Excel)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-1">Histórico</h2>
+                        <p class="text-sm text-gray-500 mb-4">Últimos backups realizados neste dispositivo.</p>
+                        <div id="backup-history" class="space-y-2 text-sm text-gray-500">Nenhum backup registado.</div>
+                    </div>
+                    <div id="backup-status" class="hidden rounded-lg p-4 text-sm font-medium"></div>
+                </div>
+            </div>
+        </main>
+
 
         <div id="cidadao-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-40 overflow-y-auto p-4">
             <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-4xl transform transition-all scale-95 opacity-0 my-auto" id="modal-content">
