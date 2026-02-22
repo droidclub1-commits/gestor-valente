@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Esconde links Mapa e Utilizadores na sidebar para cadastrador
             document.querySelectorAll('#sidebar-nav a').forEach(a => {
                 const href = a.getAttribute('href');
-                if (href === '#mapa' || href === '#utilizadores') {
+                if (href === '#mapa' || href === '#utilizadores' || href === '#cobertura' || href === '#backup') {
                     a.parentElement.classList.add('hidden');
                 }
             });
