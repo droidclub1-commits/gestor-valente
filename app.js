@@ -871,17 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function updateLeaderSelects() {
         // Filtro, demanda e cobertura — selects normais, ordenados alfabeticamente
-        const coberturaLiderSelect = document.getElementById('cobertura-filter-lider');
-        if (coberturaLiderSelect) {
-            const cur = coberturaLiderSelect.value;
-            coberturaLiderSelect.innerHTML = '<option value="">Todas as Lideranças</option>';
-            [...allLeaders].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).forEach(l => {
-                const opt = document.createElement('option');
-                opt.value = l.id; opt.textContent = l.name;
-                coberturaLiderSelect.appendChild(opt);
-            });
-            coberturaLiderSelect.value = cur;
-        }
+        setupCoberturaLiderAutocomplete();
         const selects = [filterLeader, demandaFilterLeader];
         selects.forEach(select => {
             if (!select) return;
@@ -945,6 +935,55 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!match) { hiddenInput.value = ''; searchInput.value = ''; }
         });
     }
+    function setupCoberturaLiderAutocomplete() {
+        const searchInput = document.getElementById('cobertura-lider-search');
+        const dropdown    = document.getElementById('cobertura-lider-dropdown');
+        const hiddenInput = document.getElementById('cobertura-filter-lider');
+        if (!searchInput || !dropdown || !hiddenInput) return;
+        if (searchInput._autocompleteReady) return;
+        searchInput._autocompleteReady = true;
+
+        const sorted = [...allLeaders].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+        function showDropdown(term) {
+            const filtered = term
+                ? sorted.filter(l => l.name.toLowerCase().includes(term.toLowerCase()))
+                : sorted;
+            dropdown.innerHTML = '';
+            // Opção "Todas"
+            const all = document.createElement('div');
+            all.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 text-gray-500 text-sm italic';
+            all.textContent = 'Todas as Lideranças';
+            all.addEventListener('mousedown', () => {
+                hiddenInput.value = '';
+                searchInput.value = '';
+                dropdown.classList.add('hidden');
+            });
+            dropdown.appendChild(all);
+            filtered.forEach(l => {
+                const item = document.createElement('div');
+                item.className = 'px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm';
+                item.textContent = l.name;
+                item.addEventListener('mousedown', () => {
+                    hiddenInput.value = l.id;
+                    searchInput.value = l.name;
+                    dropdown.classList.add('hidden');
+                });
+                dropdown.appendChild(item);
+            });
+            dropdown.classList.toggle('hidden', filtered.length === 0 && !term);
+        }
+
+        searchInput.addEventListener('input', () => showDropdown(searchInput.value));
+        searchInput.addEventListener('focus', () => showDropdown(searchInput.value));
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => dropdown.classList.add('hidden'), 150);
+            // Se o texto não bate com nenhuma liderança, limpa
+            const match = sorted.find(l => l.name.toLowerCase() === searchInput.value.toLowerCase());
+            if (!match) { hiddenInput.value = ''; searchInput.value = ''; }
+        });
+    }
+
     function updateBairroFilter() {
         if (!filterBairro) return;
         const currentValue = filterBairro.value;
@@ -1905,6 +1944,8 @@ function closeMapModal() {
         if (el('cobertura-filter-zona'))   el('cobertura-filter-zona').value   = '';
         if (el('cobertura-filter-secao'))  el('cobertura-filter-secao').value  = '';
         if (el('cobertura-filter-lider'))  el('cobertura-filter-lider').value  = '';
+        const cobSearchInput = el('cobertura-lider-search');
+        if (cobSearchInput) { cobSearchInput.value = ''; cobSearchInput._autocompleteReady = false; }
         // Limpa resultados
         const tbody = el('cobertura-tbody'); if (tbody) tbody.innerHTML = '';
         const liderTbody = el('cobertura-lider-tbody'); if (liderTbody) liderTbody.innerHTML = '';
