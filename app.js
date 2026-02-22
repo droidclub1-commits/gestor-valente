@@ -253,9 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
         filterFaixaEtaria.addEventListener('change', () => renderCidadaos());
         clearFiltersBtn.addEventListener('click', clearCidadaoFilters);
         loadMoreBtn.addEventListener('click', renderMoreCidadaos);
-        demandaFilterStatus.addEventListener('change', () => renderAllDemandas());
-        demandaFilterLeader.addEventListener('change', () => renderAllDemandas());
+        demandaFilterStatus.addEventListener('change', () => loadDemandasPage(true));
+        demandaFilterLeader.addEventListener('change', () => loadDemandasPage(true));
         demandaClearFiltersBtn.addEventListener('click', clearDemandaFilters);
+        document.getElementById('demandas-load-more-btn')?.addEventListener('click', () => loadDemandasPage(false));
         generateReportBtn.addEventListener('click', generatePrintReport);
         const excelReportBtn = document.getElementById('generate-excel-btn');
         if (excelReportBtn) excelReportBtn.addEventListener('click', generateExcelReport);
@@ -299,6 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // ── PERFORMANCE: controle de estado de busca server-side ──────────────────
     let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '' };
+
+    // ── Paginação server-side de demandas ─────────────────────────────────
+    const DEMANDAS_PAGE_SIZE = 15;
+    let demandasServerOffset = 0;
+    let totalDemandasCount = 0;
+    let demandasSearchState = { status: '', leader: '' };
     const CIDADAOS_PAGE_SIZE = 12;
     let totalCidadaosCount = 0;
     let cidadaosServerOffset = 0;
@@ -326,19 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     .select('id, name, type')
                     .eq('type', 'Liderança')
                     .order('name', { ascending: true }),
-                sb.from('demandas')
-                    .select('*, cidadao:cidadaos(id, name, leader)')
-                    .order('created_at', { ascending: false }),
                 loadBairrosDistintos()
             ]);
             if (leadersRes.error) throw leadersRes.error;
-            if (demandasRes.error) throw demandasRes.error;
             allLeaders = leadersRes.data;
-            allDemandas = demandasRes.data;
 
             updateLeaderSelects();
             updateBairroFilter();
-            renderAllDemandas();
+            await loadDemandasPage(true);
 
             // ── 3. Cidadãos + dashboard + utilizadores em paralelo ───────
             await Promise.all([
@@ -591,11 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast("Demanda adicionada!", "success");
             closeDemandaModal();
             // Recarrega demandas com JOIN para manter nome do solicitante
-            const { data: novasDemandas } = await sb
-                .from('demandas')
-                .select('*, cidadao:cidadaos(id, name, leader)')
-                .order('created_at', { ascending: false });
-            if (novasDemandas) { allDemandas = novasDemandas; renderAllDemandas(); await updateDashboard(); }
+            await loadDemandasPage(true);
+            await updateDashboard();
         } catch (error) {
             console.error(error);
             showToast("Erro ao salvar.", "error");
@@ -605,7 +604,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function openDemandaDetailsModal(demandaId) {
         viewingDemandaId = demandaId;
-        const demanda = allDemandas.find(d => d.id === demandaId);
+        let demanda = allDemandas.find(d => d.id === demandaId);
+        if (!demanda) {
+            // Não está no cache da página actual — busca do servidor
+            const { data } = await sb.from('demandas')
+                .select('*, cidadao:cidadaos(id, name, leader)')
+                .eq('id', demandaId).single();
+            demanda = data;
+        }
         if (!demanda) return;
         const nomeSolicitante = demanda.cidadao ? demanda.cidadao.name : (allCidadaos.find(c => c.id === demanda.cidadao_id)?.name || 'Desconhecido');
         document.getElementById('details-demanda-title').textContent = demanda.title;
@@ -641,9 +647,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (noteError) throw noteError;
             showToast("Status atualizado!", "success");
             // PERFORMANCE: atualiza apenas o objeto local da demanda
+            // Actualiza o card localmente sem re-fetch (performance)
             const idx = allDemandas.findIndex(d => d.id === demandaId);
-            if (idx !== -1) { allDemandas[idx].status = newStatus; allDemandas[idx].updated_at = new Date().toISOString(); }
-            renderAllDemandas();
+            if (idx !== -1) {
+                allDemandas[idx].status = newStatus;
+                allDemandas[idx].updated_at = new Date().toISOString();
+                // Actualiza o badge de status no card já renderizado
+                const cards = allDemandasList?.querySelectorAll('.bg-white');
+                const card = [...(cards||[])].find(el => el._demandaId === demandaId);
+                if (card) {
+                    const badge = card.querySelector('span[class*="status"]');
+                    if (badge) { const si = getStatusInfo(newStatus); badge.className = si.classes; badge.textContent = si.text; }
+                } else {
+                    // Card não visível na página actual — ignorar
+                }
+            }
+            await updateDashboard();
             await loadDemandaNotes(demandaId);
         } catch (error) {
             console.error(error);
@@ -728,8 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 allCidadaos = allCidadaos.filter(c => c.id !== id);
                 await renderCidadaos();
             } else {
-                allDemandas = allDemandas.filter(d => d.id !== id);
-                renderAllDemandas();
+                await loadDemandasPage(true);
             }
             await updateDashboard();
         } catch (error) {
@@ -822,53 +840,102 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMoreCidadaos() {
         loadCidadaosPage(false);
     }
-    function renderAllDemandas() {
-        if (!allDemandasList) return;
-        const statusFilter = demandaFilterStatus.value;
-        const leaderFilter = demandaFilterLeader.value;
-        const filteredDemandas = allDemandas.filter(demanda => {
-            const statusMatch = !statusFilter || demanda.status === statusFilter;
-            // Usa o JOIN (demanda.cidadao) em vez de allCidadaos.find
-            const leaderMatch = !leaderFilter || (demanda.cidadao && demanda.cidadao.leader === leaderFilter);
-            return statusMatch && leaderMatch;
-        });
-        allDemandasList.innerHTML = '';
-        if (filteredDemandas.length === 0) {
-            allDemandasList.innerHTML = '<p class="text-gray-500 text-center">Nenhuma demanda encontrada.</p>';
-            return;
-        }
-        filteredDemandas.forEach(demanda => {
-            // Nome do solicitante vem do JOIN, não de allCidadaos
-            const nomeSolicitante = demanda.cidadao ? demanda.cidadao.name : 'Desconhecido';
-            const statusInfo = getStatusInfo(demanda.status);
-            const item = document.createElement('div');
-            item.className = 'bg-white p-4 rounded-lg shadow-sm border flex justify-between items-center cursor-pointer hover:shadow-md';
-            const titleEl = document.createElement('h3');
-            titleEl.className = 'text-lg font-semibold text-gray-800';
-            titleEl.textContent = demanda.title;
-            const solicitanteEl = document.createElement('p');
-            solicitanteEl.className = 'text-sm text-gray-600';
-            solicitanteEl.innerHTML = 'Solicitante: <span class="font-medium text-blue-600"></span>';
-            solicitanteEl.querySelector('span').textContent = nomeSolicitante;
-            const dataEl = document.createElement('p');
-            dataEl.className = 'text-sm text-gray-500';
-            dataEl.textContent = `Data: ${demanda.created_at ? new Date(demanda.created_at).toLocaleDateString('pt-BR') : 'N/A'}`;
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'flex-1';
-            infoDiv.appendChild(titleEl);
-            infoDiv.appendChild(solicitanteEl);
-            infoDiv.appendChild(dataEl);
-            const statusDiv = document.createElement('div');
-            const statusSpan = document.createElement('span');
-            statusSpan.className = statusInfo.classes;
-            statusSpan.textContent = statusInfo.text;
-            statusDiv.appendChild(statusSpan);
-            item.appendChild(infoDiv);
-            item.appendChild(statusDiv);
-            item.addEventListener('click', () => openDemandaDetailsModal(demanda.id));
-            allDemandasList.appendChild(item);
-        });
+    // Constrói um card de demanda e retorna o elemento
+    function buildDemandaCard(demanda) {
+        const nomeSolicitante = demanda.cidadao ? demanda.cidadao.name : 'Desconhecido';
+        const statusInfo = getStatusInfo(demanda.status);
+        const item = document.createElement('div');
+        item.className = 'bg-white p-4 rounded-lg shadow-sm border flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow';
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'text-lg font-semibold text-gray-800';
+        titleEl.textContent = demanda.title;
+        const solicitanteEl = document.createElement('p');
+        solicitanteEl.className = 'text-sm text-gray-600';
+        solicitanteEl.innerHTML = 'Solicitante: <span class="font-medium text-blue-600"></span>';
+        solicitanteEl.querySelector('span').textContent = nomeSolicitante;
+        const dataEl = document.createElement('p');
+        dataEl.className = 'text-sm text-gray-500';
+        dataEl.textContent = `Data: ${demanda.created_at ? new Date(demanda.created_at).toLocaleDateString('pt-BR') : 'N/A'}`;
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'flex-1';
+        infoDiv.appendChild(titleEl);
+        infoDiv.appendChild(solicitanteEl);
+        infoDiv.appendChild(dataEl);
+        const statusSpan = document.createElement('span');
+        statusSpan.className = statusInfo.classes;
+        statusSpan.textContent = statusInfo.text;
+        item.appendChild(infoDiv);
+        item.appendChild(statusSpan);
+        item.addEventListener('click', () => openDemandaDetailsModal(demanda.id));
+        return item;
     }
+
+    async function loadDemandasPage(reset = true) {
+        if (!allDemandasList) return;
+
+        if (reset) {
+            demandasServerOffset = 0;
+            allDemandas = [];
+            allDemandasList.innerHTML = '<p class="text-gray-400 text-center py-6">A carregar...</p>';
+        }
+
+        demandasSearchState = {
+            status: demandaFilterStatus?.value || '',
+            leader: demandaFilterLeader?.value || ''
+        };
+
+        try {
+            // Query com count exacto para o total
+            let query = sb.from('demandas')
+                .select('*, cidadao:cidadaos(id, name, leader)', { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .range(demandasServerOffset, demandasServerOffset + DEMANDAS_PAGE_SIZE - 1);
+
+            if (demandasSearchState.status) query = query.eq('status', demandasSearchState.status);
+            if (demandasSearchState.leader) query = query.eq('cidadao.leader', demandasSearchState.leader);
+
+            const { data, error, count } = await query;
+            if (error) throw error;
+
+            // Guardar count total para o dashboard e gráfico
+            if (reset || totalDemandasCount === 0) totalDemandasCount = count || 0;
+
+            // Acrescentar ao cache local (só a página corrente)
+            allDemandas = reset ? (data || []) : [...allDemandas, ...(data || [])];
+            demandasServerOffset += (data || []).length;
+
+            // Renderizar
+            if (reset) allDemandasList.innerHTML = '';
+
+            if (allDemandas.length === 0) {
+                allDemandasList.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhuma demanda encontrada.</p>';
+            } else {
+                const fragment = document.createDocumentFragment();
+                (data || []).forEach(d => fragment.appendChild(buildDemandaCard(d)));
+                allDemandasList.appendChild(fragment);
+            }
+
+            // Contador
+            const label = document.getElementById('demandas-count-label');
+            if (label) {
+                const temFiltro = demandasSearchState.status || demandasSearchState.leader;
+                label.textContent = temFiltro
+                    ? `${allDemandas.length} demanda(s) encontrada(s)`
+                    : `Exibindo ${allDemandas.length} de ${totalDemandasCount} demanda(s)`;
+            }
+
+            // Botão "Carregar Mais"
+            const wrap = document.getElementById('demandas-load-more-wrap');
+            if (wrap) wrap.classList.toggle('hidden', demandasServerOffset >= totalDemandasCount);
+
+        } catch(e) {
+            console.error(e);
+            showToast('Erro ao carregar demandas: ' + e.message, 'error');
+        }
+    }
+
+    // Mantida para compatibilidade com updateDemandaStatus (actualiza card localmente)
+    function renderAllDemandas() { loadDemandasPage(true); }
     function updateLeaderSelects() {
         // Filtro, demanda e cobertura — selects normais, ordenados alfabeticamente
         setupCoberturaLiderAutocomplete();
@@ -1011,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearDemandaFilters() {
         demandaFilterStatus.value = '';
         demandaFilterLeader.value = '';
-        renderAllDemandas();
+        loadDemandasPage(true);
     }
     async function updateDashboard() {
         const totalEl = document.getElementById('dashboard-total-cidadaos');
@@ -1023,11 +1090,17 @@ document.addEventListener('DOMContentLoaded', () => {
             totalCidadaosCount = count || 0;
             totalEl.textContent = totalCidadaosCount;
         }
-        document.getElementById('dashboard-total-demandas').textContent = allDemandas.length;
+        // Contador de demandas — busca do servidor para reflectir total real
+        try {
+            const { count: cntDemandas } = await sb
+                .from('demandas').select('*', { count: 'exact', head: true });
+            totalDemandasCount = cntDemandas || 0;
+        } catch(e) { /* mantém o valor anterior */ }
+        document.getElementById('dashboard-total-demandas').textContent = totalDemandasCount;
         // Gráficos e widgets em paralelo — não dependem uns dos outros
         updateDemandasRecentes();
         updateCidadaosPorTipoChart();
-        updateDemandasPorStatusChart();
+        updateDemandasPorStatusChart(); // async — não bloqueia
         await Promise.all([
             updateAniversariantes(),
             updateCidadaosPorBairroChart(),
@@ -1151,19 +1224,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch(e) { console.warn('Chart tipo:', e); }
     }
-    function updateDemandasPorStatusChart() {
+    async function updateDemandasPorStatusChart() {
         const ctx = document.getElementById('demandas-por-status-chart');
         if (!ctx) return;
-        const data = allDemandas.reduce((acc, d) => { acc[d.status] = (acc[d.status] || 0) + 1; return acc; }, {});
-        const labels = Object.keys(data).map(s => getStatusInfo(s).text);
-        const values = Object.values(data);
-        const colors = Object.keys(data).map(s => getStatusInfo(s).color);
-        if (demandasChart) demandasChart.destroy();
-        demandasChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: { labels: labels, datasets: [{ label: 'Demandas por Status', data: values, backgroundColor: colors, }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        try {
+            // Busca contagem por status directamente do servidor — reflecte TODAS as demandas
+            const { data, error } = await sb
+                .from('demandas')
+                .select('status');
+            if (error) throw error;
+            const contagem = (data || []).reduce((acc, d) => {
+                acc[d.status] = (acc[d.status] || 0) + 1;
+                return acc;
+            }, {});
+            const labels = Object.keys(contagem).map(s => getStatusInfo(s).text);
+            const values = Object.values(contagem);
+            const colors = Object.keys(contagem).map(s => getStatusInfo(s).color);
+            if (demandasChart) demandasChart.destroy();
+            demandasChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ label: 'Demandas por Status', data: values, backgroundColor: colors }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        } catch(e) { console.error('Erro gráfico demandas:', e); }
     }
     async function updateCidadaosPorMunicipioChart() {
         const ctx = document.getElementById('cidadaos-por-municipio-chart');
@@ -1564,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (type === 'demanda') {
             const demanda = allDemandas.find(d => d.id === itemId);
             title.textContent = 'Excluir Demanda';
-            message.textContent = `Tem a certeza que quer excluir "${demanda.title}"?`;
+            message.textContent = `Tem a certeza que quer excluir "${demanda ? demanda.title : 'esta demanda'}"?`;
         }
         modal.classList.remove('hidden');
     }
