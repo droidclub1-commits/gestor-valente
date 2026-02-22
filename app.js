@@ -259,6 +259,12 @@ document.addEventListener('DOMContentLoaded', () => {
         generateReportBtn.addEventListener('click', generatePrintReport);
         const excelReportBtn = document.getElementById('generate-excel-btn');
         if (excelReportBtn) excelReportBtn.addEventListener('click', generateExcelReport);
+        // Cobertura Eleitoral
+        document.getElementById('cobertura-load-btn')?.addEventListener('click', loadCoberturaEleitoral);
+        document.getElementById('cobertura-excel-btn')?.addEventListener('click', exportCoberturaExcel);
+        // Backup
+        document.getElementById('backup-json-btn')?.addEventListener('click', () => backupData('json'));
+        document.getElementById('backup-csv-btn')?.addEventListener('click', () => backupData('csv'));
         const addUserBtn = document.getElementById('add-user-btn');
         if (addUserBtn) addUserBtn.addEventListener('click', () => openUserModal());
         const closeUserModalBtn = document.getElementById('close-user-modal-btn');
@@ -1875,7 +1881,289 @@ function closeMapModal() {
         }
     }
 
+
+    // ═══════════════════════════════════════════════════════════════
+    // COBERTURA ELEITORAL
+    // ═══════════════════════════════════════════════════════════════
+    let coberturaData = [];
+
+    async function loadCoberturaEleitoral() {
+        const btn    = document.getElementById('cobertura-load-btn');
+        const tbody  = document.getElementById('cobertura-tbody');
+        const empty  = document.getElementById('cobertura-empty');
+        const summary = document.getElementById('cobertura-summary');
+        if (!tbody) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner mx-auto"></div>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">A carregar...</td></tr>';
+        if (empty) empty.classList.add('hidden');
+
+        const cidade = document.getElementById('cobertura-filter-cidade')?.value || '';
+        const zona   = document.getElementById('cobertura-filter-zona')?.value.trim() || '';
+        const secao  = document.getElementById('cobertura-filter-secao')?.value.trim() || '';
+
+        try {
+            // Busca todos os registos com zona ou seção preenchida
+            let query = sb.from('cidadaos')
+                .select('cidade, zona, secao, type')
+                .not('zona', 'is', null)
+                .not('zona', 'eq', '');
+            if (cidade) query = query.eq('cidade', cidade);
+            if (zona)   query = query.ilike('zona', `%${zona}%`);
+            if (secao)  query = query.ilike('secao', `%${secao}%`);
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                if (summary) summary.innerHTML = '';
+                coberturaData = [];
+                btn.disabled = false; btn.textContent = 'Buscar';
+                return;
+            }
+
+            // Agrupa por cidade + zona + secao
+            const grupos = {};
+            data.forEach(c => {
+                const key = `${c.cidade||'—'}||${c.zona||'—'}||${c.secao||'—'}`;
+                if (!grupos[key]) grupos[key] = { cidade: c.cidade||'—', zona: c.zona||'—', secao: c.secao||'—', total: 0, tipos: {} };
+                grupos[key].total++;
+                const tipo = c.type || 'Outro';
+                grupos[key].tipos[tipo] = (grupos[key].tipos[tipo] || 0) + 1;
+            });
+
+            coberturaData = Object.values(grupos).sort((a, b) => {
+                const cc = (a.cidade).localeCompare(b.cidade, 'pt-BR');
+                if (cc !== 0) return cc;
+                const zn = String(a.zona).localeCompare(String(b.zona), 'pt-BR', { numeric: true });
+                if (zn !== 0) return zn;
+                return String(a.secao).localeCompare(String(b.secao), 'pt-BR', { numeric: true });
+            });
+
+            const totalCidadaos = coberturaData.reduce((s, g) => s + g.total, 0);
+            const totalSecoes   = coberturaData.length;
+            const totalZonas    = new Set(coberturaData.map(g => `${g.cidade}||${g.zona}`)).size;
+            const topSecao      = coberturaData.reduce((a, b) => b.total > (a?.total||0) ? b : a, null);
+
+            if (summary) {
+                summary.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
+                        <p class="text-3xl font-bold text-blue-600">${totalCidadaos}</p>
+                        <p class="text-sm text-gray-500 mt-1">Cidadãos com Zona/Seção</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
+                        <p class="text-3xl font-bold text-green-600">${totalZonas}</p>
+                        <p class="text-sm text-gray-500 mt-1">Zonas</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
+                        <p class="text-3xl font-bold text-purple-600">${totalSecoes}</p>
+                        <p class="text-sm text-gray-500 mt-1">Seções</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
+                        <p class="text-3xl font-bold text-orange-600">${topSecao ? topSecao.total : 0}</p>
+                        <p class="text-sm text-gray-500 mt-1">Maior Seção${topSecao ? ` (Z${topSecao.zona} / S${topSecao.secao})` : ''}</p>
+                    </div>`;
+            }
+
+            tbody.innerHTML = '';
+            coberturaData.forEach(g => {
+                const tiposStr = Object.entries(g.tipos)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([t, n]) => `${t}: ${n}`)
+                    .join(' · ');
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-gray-800">${g.cidade}</td>
+                    <td class="px-4 py-3 font-semibold">${g.zona}</td>
+                    <td class="px-4 py-3 font-semibold">${g.secao}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm">${g.total}</span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 text-xs">${tiposStr}</td>`;
+                tbody.appendChild(tr);
+            });
+        } catch(e) {
+            console.error(e);
+            showToast('Erro ao carregar cobertura: ' + e.message, 'error');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-400">Erro ao carregar dados.</td></tr>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Buscar';
+        }
+    }
+
+    function exportCoberturaExcel() {
+        if (!coberturaData.length) {
+            showToast('Carregue os dados primeiro clicando em "Buscar".', 'warning');
+            return;
+        }
+        const headers = ['Município', 'Zona', 'Seção', 'Total Cidadãos', 'Distribuição por Tipo'];
+        const rows = coberturaData.map(g => [
+            g.cidade, g.zona, g.secao, g.total,
+            Object.entries(g.tipos).map(([t, n]) => `${t}: ${n}`).join(' | ')
+        ]);
+        const esc = v => {
+            const s = String(v ?? '');
+            return (s.includes(';') || s.includes('"') || s.includes('\n'))
+                ? '"' + s.replace(/"/g, '""') + '"' : s;
+        };
+        const csv = ['\uFEFF',
+            headers.map(esc).join(';'),
+            ...rows.map(r => r.map(esc).join(';'))
+        ].join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `cobertura_eleitoral_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        showToast('Cobertura exportada com sucesso!', 'success');
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // BACKUP DE DADOS
+    // ═══════════════════════════════════════════════════════════════
+    async function backupData(format) {
+        const jsonBtn = document.getElementById('backup-json-btn');
+        const csvBtn  = document.getElementById('backup-csv-btn');
+        const status  = document.getElementById('backup-status');
+        const btn = format === 'json' ? jsonBtn : csvBtn;
+        if (!btn) return;
+
+        btn.disabled = true;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<div class="spinner" style="display:inline-block;margin-right:6px"></div> A exportar...';
+        if (status) {
+            status.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800';
+            status.textContent = 'A exportar todos os dados do Supabase... Aguarde, pode demorar alguns segundos.';
+            status.classList.remove('hidden');
+        }
+
+        try {
+            // Cidadãos — busca paginada para suportar 25k+ registos
+            let cidadaos = [];
+            let offset = 0;
+            const PAGE = 1000;
+            while (true) {
+                const { data, error } = await sb.from('cidadaos')
+                    .select('*')
+                    .order('name', { ascending: true })
+                    .range(offset, offset + PAGE - 1);
+                if (error) throw error;
+                cidadaos = [...cidadaos, ...(data || [])];
+                if (!data || data.length < PAGE) break;
+                offset += PAGE;
+            }
+
+            // Demandas — todas de uma vez (geralmente menos registos)
+            const { data: demandas, error: errDemandas } = await sb
+                .from('demandas').select('*').order('created_at', { ascending: false });
+            if (errDemandas) throw errDemandas;
+
+            const hoje  = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            const agora = new Date().toLocaleString('pt-BR');
+
+            if (format === 'json') {
+                const payload = {
+                    exportado_em:    agora,
+                    total_cidadaos:  cidadaos.length,
+                    total_demandas:  (demandas||[]).length,
+                    cidadaos,
+                    demandas: demandas || []
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `backup_completo_${hoje}.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+            } else {
+                // CSV com todos os campos dos cidadãos
+                const headers = [
+                    'Nome','CPF','RG','Título Eleitor','Zona','Seção',
+                    'Data Nasc.','Sexo','Tipo','Telefone','WhatsApp','Email',
+                    'Profissão','Local Trabalho','Logradouro','Número',
+                    'Complemento','Bairro','Cidade','Estado','CEP',
+                    'Liderança','Filhos','Filhas','Cadastrado em'
+                ];
+                const esc = v => {
+                    const s = String(v ?? '');
+                    return (s.includes(';') || s.includes('"') || s.includes('\n'))
+                        ? '"' + s.replace(/"/g, '""') + '"' : s;
+                };
+                const rows = cidadaos.map(c => [
+                    c.name, c.cpf, c.rg, c.voterid, c.zona, c.secao,
+                    c.dob ? formatarData(c.dob) : '',
+                    c.sexo, c.type,
+                    c.phone, c.whatsapp ? 'Sim' : 'Não', c.email,
+                    c.profissao, c.localtrabalho,
+                    c.logradouro, c.numero, c.complemento, c.bairro,
+                    c.cidade, c.estado, c.cep,
+                    allLeaders.find(l => l.id === c.leader)?.name || '',
+                    c.sons ?? 0, c.daughters ?? 0,
+                    c.created_at ? new Date(c.created_at).toLocaleString('pt-BR') : ''
+                ]);
+                const csv = ['\uFEFF',
+                    headers.map(esc).join(';'),
+                    ...rows.map(r => r.map(esc).join(';'))
+                ].join('\r\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `backup_cidadaos_${hoje}.csv`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            }
+
+            // Regista no histórico local
+            const hist = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+            hist.unshift({ data: agora, formato: format.toUpperCase(), total: cidadaos.length });
+            localStorage.setItem('backupHistory', JSON.stringify(hist.slice(0, 10)));
+            renderBackupHistory();
+
+            if (status) {
+                status.className = 'bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800';
+                status.textContent = `✅ Backup concluído! ${cidadaos.length} cidadãos exportados em ${agora}.`;
+            }
+            showToast(`Backup ${format.toUpperCase()} concluído!`, 'success');
+
+        } catch(e) {
+            console.error(e);
+            if (status) {
+                status.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800';
+                status.textContent = '❌ Erro ao exportar: ' + e.message;
+                status.classList.remove('hidden');
+            }
+            showToast('Erro no backup: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        }
+    }
+
+    function renderBackupHistory() {
+        const el = document.getElementById('backup-history');
+        if (!el) return;
+        const hist = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+        if (!hist.length) {
+            el.innerHTML = '<p class="text-gray-400 text-sm">Nenhum backup registado neste dispositivo.</p>';
+            return;
+        }
+        el.innerHTML = hist.map(h =>
+            `<div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                <span class="text-gray-700 text-sm">${h.data}</span>
+                <div class="flex gap-3 text-xs items-center">
+                    <span class="bg-gray-100 px-2 py-1 rounded font-medium">${h.formato}</span>
+                    <span class="text-gray-500">${h.total} cidadãos</span>
+                </div>
+            </div>`
+        ).join('');
+    }
+
     function switchPage(pageId) {
+        if (pageId === 'backup-page') setTimeout(renderBackupHistory, 50);
         document.querySelectorAll('.page').forEach(page => {
             page.classList.add('hidden');
             page.classList.remove('flex', 'flex-col');
@@ -1883,9 +2171,8 @@ function closeMapModal() {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            if(pageId === 'dashboard-page' || pageId === 'cidadaos-page' || pageId === 'demandas-page') {
-                newPage.classList.add('flex', 'flex-col');
-            }
+            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page'];
+            if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {
             link.classList.remove('bg-slate-900', 'font-semibold');
