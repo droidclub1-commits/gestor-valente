@@ -1164,18 +1164,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const mes = now.getMonth() + 1;   // 1–12
             const diaHoje = now.getDate();
 
-            // ── Filtro no servidor usando ilike no campo dob (formato YYYY-MM-DD) ──
-            // Procura o padrão '-MM-' no meio da string da data,
-            // evitando transferir todos os registos para filtrar no cliente.
-            const mesPad = String(mes).padStart(2, '0');
+            // ── Filtro no servidor: dob é tipo DATE — ilike não funciona em DATE. ──
+            // Solução: busca só id/name/dob com limit(2000) e filtra o mês no cliente.
+            // Com 25k pessoas e ~2k aniversariantes/mês, o payload máximo é 2000 registos
+            // (3 campos leves cada) — nunca transfere a base inteira.
             const { data, error } = await sb
                 .from('cidadaos')
                 .select('id, name, dob')
-                .ilike('dob', `%-${mesPad}-%`)
-                .order('dob', { ascending: true });
+                .not('dob', 'is', null)
+                .order('dob', { ascending: true })
+                .limit(2000);
             if (error) throw error;
 
-            const todos = (data || []).sort((a, b) => {
+            const todos = (data || [])
+                .filter(c => parseInt(c.dob.split('-')[1], 10) === mes)
+                .sort((a, b) => {
                 // Ordena por dia do mês; quem já passou fica no final
                 const diaA = parseInt(a.dob.split('-')[2], 10);
                 const diaB = parseInt(b.dob.split('-')[2], 10);
