@@ -1191,8 +1191,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             _aniversariantesTodos = doMes; // cache para o modal
 
-            // Widget: apenas de HOJE até o fim do mês
+            // Widget: apenas de HOJE até o fim do mês, limitado a 10
+            const LIMITE_WIDGET = 10;
             const daqui = doMes.filter(c => parseInt(c.dob.split('-')[2], 10) >= diaHoje);
+            const visiveis = daqui.slice(0, LIMITE_WIDGET);
 
             listEl.innerHTML = '';
 
@@ -1208,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (daqui.length === 0) {
                 listEl.innerHTML = '<p class="text-sm text-gray-500 italic">Nenhum aniversariante pelos próximos dias.</p>';
             } else {
-                daqui.forEach(c => {
+                visiveis.forEach(c => {
                     const dia   = parseInt(c.dob.split('-')[2], 10);
                     const eHoje = dia === diaHoje;
                     const item  = document.createElement('div');
