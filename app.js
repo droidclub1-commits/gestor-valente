@@ -267,6 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (excelReportBtn) excelReportBtn.addEventListener('click', generateExcelReport);
         // Cobertura Eleitoral
         document.getElementById('cobertura-load-btn')?.addEventListener('click', loadCoberturaEleitoral);
+        // Listeners modal aniversariantes
+        document.getElementById('close-aniversariantes-modal')?.addEventListener('click', closeAniversariantesModal);
+        document.getElementById('aniv-modal-prev')?.addEventListener('click', () => { _anivModalPagina--; renderAniversariantesModal(); });
+        document.getElementById('aniv-modal-next')?.addEventListener('click', () => { _anivModalPagina++; renderAniversariantesModal(); });
+        document.getElementById('aniversariantes-modal')?.addEventListener('click', e => {
+            if (e.target === document.getElementById('aniversariantes-modal')) closeAniversariantesModal();
+        });
         document.getElementById('cobertura-clear-btn')?.addEventListener('click', clearCoberturaFiltros);
         document.getElementById('cobertura-excel-btn')?.addEventListener('click', exportCoberturaExcel);
         // Backup
@@ -1149,25 +1156,26 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCidadaosPorFaixaEtariaChart()
         ]);
     }
+    // ── Cache para o modal (evita re-fetch ao paginar) ─────────────────
+    let _aniversariantesTodos = [];
+    let _anivModalPagina      = 1;
+    const ANIV_MODAL_POR_PAG  = 12;
+
     async function updateAniversariantes() {
-        const listEl   = document.getElementById('aniversariantes-list');
-        const totalEl  = document.getElementById('aniversariantes-total');
-        const verMais  = document.getElementById('aniversariantes-ver-mais');
+        const listEl     = document.getElementById('aniversariantes-list');
+        const totalEl    = document.getElementById('aniversariantes-total');
+        const verMais    = document.getElementById('aniversariantes-ver-mais');
         const verMaisBtn = document.getElementById('aniversariantes-ver-mais-btn');
         if (!listEl) return;
         listEl.innerHTML = '<p class="text-sm text-gray-400">A carregar...</p>';
 
-        const LIMITE_WIDGET = 10; // máximo visível no dashboard
-
         try {
-            const now = new Date();
-            const mes = now.getMonth() + 1;   // 1–12
+            const now     = new Date();
+            const mes     = now.getMonth() + 1;
             const diaHoje = now.getDate();
 
-            // ── Filtro no servidor: dob é tipo DATE — ilike não funciona em DATE. ──
-            // Solução: busca só id/name/dob com limit(2000) e filtra o mês no cliente.
-            // Com 25k pessoas e ~2k aniversariantes/mês, o payload máximo é 2000 registos
-            // (3 campos leves cada) — nunca transfere a base inteira.
+            // dob é tipo DATE no Postgres — ilike não funciona em DATE.
+            // Busca 3 campos leves, filtra mês no cliente. Limit 2000 = cap de segurança.
             const { data, error } = await sb
                 .from('cidadaos')
                 .select('id, name, dob')
@@ -1176,63 +1184,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 .limit(2000);
             if (error) throw error;
 
-            const todos = (data || [])
+            // Lista completa do mês ordenada por dia 01→31 (usada no modal)
+            const doMes = (data || [])
                 .filter(c => parseInt(c.dob.split('-')[1], 10) === mes)
-                .sort((a, b) => {
-                // Ordena por dia do mês; quem já passou fica no final
-                const diaA = parseInt(a.dob.split('-')[2], 10);
-                const diaB = parseInt(b.dob.split('-')[2], 10);
-                // Prioriza os que ainda não passaram (>= hoje) sobre os que já passaram
-                const aPassou = diaA < diaHoje ? 1 : 0;
-                const bPassou = diaB < diaHoje ? 1 : 0;
-                if (aPassou !== bPassou) return aPassou - bPassou;
-                return diaA - diaB;
-            });
+                .sort((a, b) => parseInt(a.dob.split('-')[2], 10) - parseInt(b.dob.split('-')[2], 10));
+
+            _aniversariantesTodos = doMes; // cache para o modal
+
+            // Widget: apenas de HOJE até o fim do mês
+            const daqui = doMes.filter(c => parseInt(c.dob.split('-')[2], 10) >= diaHoje);
 
             listEl.innerHTML = '';
 
-            if (todos.length === 0) {
+            if (doMes.length === 0) {
                 listEl.innerHTML = '<p class="text-sm text-gray-500">Nenhum aniversariante este mês.</p>';
                 if (totalEl) totalEl.textContent = '';
                 if (verMais) verMais.classList.add('hidden');
                 return;
             }
 
-            // Contador total
-            if (totalEl) totalEl.textContent = `${todos.length} no total`;
+            if (totalEl) totalEl.textContent = `${doMes.length} este mês`;
 
-            // Renderiza só os primeiros LIMITE_WIDGET
-            const visiveis = todos.slice(0, LIMITE_WIDGET);
-            visiveis.forEach(c => {
-                const dia = c.dob.split('-')[2];
-                const hoje = parseInt(dia, 10) === diaHoje;
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer' + (hoje ? ' bg-yellow-50' : '');
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'font-medium text-gray-700 text-sm truncate mr-2';
-                nameSpan.textContent = c.name + (hoje ? ' 🎂' : '');
-                const diaSpan = document.createElement('span');
-                diaSpan.className = 'font-bold text-blue-600 text-sm flex-shrink-0';
-                diaSpan.textContent = `dia ${dia}`;
-                item.appendChild(nameSpan);
-                item.appendChild(diaSpan);
-                item.addEventListener('click', () => openDetailsModal(c.id));
-                listEl.appendChild(item);
-            });
-
-            // Botão "ver todos" se houver mais que o limite
-            if (todos.length > LIMITE_WIDGET) {
-                const restantes = todos.length - LIMITE_WIDGET;
-                if (verMais) verMais.classList.remove('hidden');
-                if (verMaisBtn) {
-                    verMaisBtn.textContent = `Ver todos os ${todos.length} aniversariantes →`;
-                    // Remove listener antigo para não acumular
-                    verMaisBtn.replaceWith(verMaisBtn.cloneNode(true));
-                    document.getElementById('aniversariantes-ver-mais-btn')
-                        .addEventListener('click', () => renderTodosAniversariantes(todos));
-                }
+            if (daqui.length === 0) {
+                listEl.innerHTML = '<p class="text-sm text-gray-500 italic">Nenhum aniversariante pelos próximos dias.</p>';
             } else {
-                if (verMais) verMais.classList.add('hidden');
+                daqui.forEach(c => {
+                    const dia   = parseInt(c.dob.split('-')[2], 10);
+                    const eHoje = dia === diaHoje;
+                    const item  = document.createElement('div');
+                    item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer'
+                        + (eHoje ? ' bg-yellow-50 border border-yellow-200' : '');
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'font-medium text-gray-700 text-sm truncate mr-2';
+                    nameSpan.textContent = c.name + (eHoje ? ' 🎂' : '');
+                    const diaSpan = document.createElement('span');
+                    diaSpan.className = 'font-bold flex-shrink-0 text-sm '
+                        + (eHoje ? 'text-yellow-600' : 'text-blue-600');
+                    diaSpan.textContent = `dia ${String(dia).padStart(2, '0')}`;
+                    item.appendChild(nameSpan);
+                    item.appendChild(diaSpan);
+                    item.addEventListener('click', () => openDetailsModal(c.id));
+                    listEl.appendChild(item);
+                });
+            }
+
+            // Botão — sempre visível, abre o modal com todos do mês paginados
+            if (verMais) verMais.classList.remove('hidden');
+            if (verMaisBtn) {
+                const novo = verMaisBtn.cloneNode(true);
+                verMaisBtn.replaceWith(novo);
+                document.getElementById('aniversariantes-ver-mais-btn').textContent =
+                    `Ver todos os ${doMes.length} aniversariantes do mês →`;
+                document.getElementById('aniversariantes-ver-mais-btn')
+                    .addEventListener('click', () => openAniversariantesModal());
             }
 
         } catch(e) {
@@ -1241,40 +1245,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderTodosAniversariantes(todos) {
-        const listEl = document.getElementById('aniversariantes-list');
-        const verMais = document.getElementById('aniversariantes-ver-mais');
-        const verMaisBtn = document.getElementById('aniversariantes-ver-mais-btn');
-        const diaHoje = new Date().getDate();
-        if (!listEl) return;
+    function openAniversariantesModal() {
+        _anivModalPagina = 1;
+        renderAniversariantesModal();
+        document.getElementById('aniversariantes-modal').classList.remove('hidden');
+    }
 
+    function closeAniversariantesModal() {
+        document.getElementById('aniversariantes-modal').classList.add('hidden');
+    }
+
+    function renderAniversariantesModal() {
+        const lista   = _aniversariantesTodos;
+        const total   = lista.length;
+        const totPag  = Math.ceil(total / ANIV_MODAL_POR_PAG) || 1;
+        const inicio  = (_anivModalPagina - 1) * ANIV_MODAL_POR_PAG;
+        const fim     = Math.min(inicio + ANIV_MODAL_POR_PAG, total);
+        const pagina  = lista.slice(inicio, fim);
+        const diaHoje = new Date().getDate();
+        const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+
+        const subtitle = document.getElementById('aniv-modal-subtitle');
+        if (subtitle) subtitle.textContent =
+            `${total} aniversariante(s) em ${mesNome} — página ${_anivModalPagina} de ${totPag}`;
+
+        const listEl = document.getElementById('aniv-modal-list');
+        if (!listEl) return;
         listEl.innerHTML = '';
-        todos.forEach(c => {
-            const dia = c.dob.split('-')[2];
-            const hoje = parseInt(dia, 10) === diaHoje;
-            const item = document.createElement('div');
-            item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer' + (hoje ? ' bg-yellow-50' : '');
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'font-medium text-gray-700 text-sm truncate mr-2';
-            nameSpan.textContent = c.name + (hoje ? ' 🎂' : '');
-            const diaSpan = document.createElement('span');
-            diaSpan.className = 'font-bold text-blue-600 text-sm flex-shrink-0';
-            diaSpan.textContent = `dia ${dia}`;
-            item.appendChild(nameSpan);
-            item.appendChild(diaSpan);
-            item.addEventListener('click', () => openDetailsModal(c.id));
-            listEl.appendChild(item);
+
+        pagina.forEach(c => {
+            const dia   = parseInt(c.dob.split('-')[2], 10);
+            const eHoje = dia === diaHoje;
+            const row   = document.createElement('div');
+            row.className = 'flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors '
+                + (eHoje ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                         : 'hover:bg-gray-50 border border-transparent');
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-3';
+            const av = document.createElement('div');
+            av.className = 'w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 '
+                + (eHoje ? 'bg-yellow-500' : 'bg-blue-500');
+            av.textContent = c.name.charAt(0).toUpperCase();
+            const name = document.createElement('span');
+            name.className = 'font-medium text-gray-800 text-sm';
+            name.textContent = c.name + (eHoje ? ' 🎂' : '');
+            left.appendChild(av);
+            left.appendChild(name);
+            const diaTag = document.createElement('span');
+            diaTag.className = 'text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 '
+                + (eHoje ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-50 text-blue-700');
+            diaTag.textContent = `dia ${String(dia).padStart(2, '0')}`;
+            row.appendChild(left);
+            row.appendChild(diaTag);
+            row.addEventListener('click', () => {
+                closeAniversariantesModal();
+                openDetailsModal(c.id);
+            });
+            listEl.appendChild(row);
         });
 
-        // Trocar botão por "recolher"
-        if (verMais) verMais.classList.remove('hidden');
-        if (verMaisBtn) {
-            verMaisBtn.replaceWith(verMaisBtn.cloneNode(true));
-            const novoBtn = document.getElementById('aniversariantes-ver-mais-btn');
-            novoBtn.textContent = '↑ Recolher';
-            novoBtn.addEventListener('click', () => updateAniversariantes());
-        }
+        // Controles de paginação
+        const pagesEl = document.getElementById('aniv-modal-pages');
+        if (pagesEl) pagesEl.textContent = `${_anivModalPagina} / ${totPag}`;
+        const prevBtn = document.getElementById('aniv-modal-prev');
+        const nextBtn = document.getElementById('aniv-modal-next');
+        if (prevBtn) prevBtn.disabled = _anivModalPagina <= 1;
+        if (nextBtn) nextBtn.disabled = _anivModalPagina >= totPag;
     }
+
     function updateDemandasRecentes() {
         const listEl = document.getElementById('demandas-recentes-list');
         if (!listEl) return;
