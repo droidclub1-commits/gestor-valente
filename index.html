@@ -117,7 +117,16 @@
                             </div>
                         </div>
                         <div class="lg:col-span-1 space-y-6">
-                            <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="text-lg font-semibold text-gray-500 mb-4">Aniversariantes do Mês</h3><div id="aniversariantes-list" class="space-y-3 max-h-48 overflow-y-auto"></div></div>
+                            <div class="bg-white p-6 rounded-lg shadow-sm">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h3 class="text-lg font-semibold text-gray-500">Aniversariantes do Mês</h3>
+                                            <span id="aniversariantes-total" class="text-xs text-gray-400"></span>
+                                        </div>
+                                        <div id="aniversariantes-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                                        <div id="aniversariantes-ver-mais" class="hidden mt-3 pt-3 border-t text-center">
+                                            <button id="aniversariantes-ver-mais-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Ver todos os aniversariantes →</button>
+                                        </div>
+                                    </div>
                             <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="text-lg font-semibold text-gray-500 mb-4">Demandas Recentes</h3><div id="demandas-recentes-list" class="space-y-3 max-h-96 overflow-y-auto"></div></div>
                         </div>
                     </div>
