@@ -1150,55 +1150,126 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
     }
     async function updateAniversariantes() {
-        const listEl = document.getElementById('aniversariantes-list');
+        const listEl   = document.getElementById('aniversariantes-list');
+        const totalEl  = document.getElementById('aniversariantes-total');
+        const verMais  = document.getElementById('aniversariantes-ver-mais');
+        const verMaisBtn = document.getElementById('aniversariantes-ver-mais-btn');
         if (!listEl) return;
         listEl.innerHTML = '<p class="text-sm text-gray-400">A carregar...</p>';
+
+        const LIMITE_WIDGET = 10; // máximo visível no dashboard
+
         try {
             const now = new Date();
-            const mes = now.getMonth() + 1; // 1-12
+            const mes = now.getMonth() + 1;   // 1–12
+            const diaHoje = now.getDate();
 
-            // dob é armazenado como 'YYYY-MM-DD' — extrai o mês com SUBSTRING
-            // gte/lte no formato '-MM-' seria ambíguo; usamos gte/lte no campo do mês
-            // Filtramos todos os dob onde SUBSTRING(dob, 6, 2) = mes (posição do mês no formato ISO)
-            // Busca só id, name e dob — leve, sem dados pesados
-            // Filtragem por mês feita no cliente pois dob é tipo DATE no Postgres
-            // (ilike não funciona em DATE, e EXTRACT requer RPC)
+            // ── Filtro no servidor usando ilike no campo dob (formato YYYY-MM-DD) ──
+            // Procura o padrão '-MM-' no meio da string da data,
+            // evitando transferir todos os registos para filtrar no cliente.
+            const mesPad = String(mes).padStart(2, '0');
             const { data, error } = await sb
                 .from('cidadaos')
                 .select('id, name, dob')
-                .not('dob', 'is', null);
+                .ilike('dob', `%-${mesPad}-%`)
+                .order('dob', { ascending: true });
             if (error) throw error;
 
-            const aniversariantes = (data || [])
-                .filter(c => {
-                    const dobMes = parseInt(c.dob.split('-')[1], 10);
-                    return dobMes === mes;
-                })
-                .sort((a, b) => parseInt(a.dob.split('-')[2]) - parseInt(b.dob.split('-')[2]));
+            const todos = (data || []).sort((a, b) => {
+                // Ordena por dia do mês; quem já passou fica no final
+                const diaA = parseInt(a.dob.split('-')[2], 10);
+                const diaB = parseInt(b.dob.split('-')[2], 10);
+                // Prioriza os que ainda não passaram (>= hoje) sobre os que já passaram
+                const aPassou = diaA < diaHoje ? 1 : 0;
+                const bPassou = diaB < diaHoje ? 1 : 0;
+                if (aPassou !== bPassou) return aPassou - bPassou;
+                return diaA - diaB;
+            });
+
             listEl.innerHTML = '';
-            if (!aniversariantes || aniversariantes.length === 0) {
+
+            if (todos.length === 0) {
                 listEl.innerHTML = '<p class="text-sm text-gray-500">Nenhum aniversariante este mês.</p>';
+                if (totalEl) totalEl.textContent = '';
+                if (verMais) verMais.classList.add('hidden');
                 return;
             }
-            aniversariantes.forEach(c => {
-                const parts = c.dob.split('-');
-                const dia = parts[2];
+
+            // Contador total
+            if (totalEl) totalEl.textContent = `${todos.length} no total`;
+
+            // Renderiza só os primeiros LIMITE_WIDGET
+            const visiveis = todos.slice(0, LIMITE_WIDGET);
+            visiveis.forEach(c => {
+                const dia = c.dob.split('-')[2];
+                const hoje = parseInt(dia, 10) === diaHoje;
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer';
+                item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer' + (hoje ? ' bg-yellow-50' : '');
                 const nameSpan = document.createElement('span');
-                nameSpan.className = 'font-medium text-gray-700';
-                nameSpan.textContent = c.name;
+                nameSpan.className = 'font-medium text-gray-700 text-sm truncate mr-2';
+                nameSpan.textContent = c.name + (hoje ? ' 🎂' : '');
                 const diaSpan = document.createElement('span');
-                diaSpan.className = 'font-bold text-blue-600';
-                diaSpan.textContent = dia;
+                diaSpan.className = 'font-bold text-blue-600 text-sm flex-shrink-0';
+                diaSpan.textContent = `dia ${dia}`;
                 item.appendChild(nameSpan);
                 item.appendChild(diaSpan);
-                item.addEventListener('click', () => { openDetailsModal(c.id); });
+                item.addEventListener('click', () => openDetailsModal(c.id));
                 listEl.appendChild(item);
             });
+
+            // Botão "ver todos" se houver mais que o limite
+            if (todos.length > LIMITE_WIDGET) {
+                const restantes = todos.length - LIMITE_WIDGET;
+                if (verMais) verMais.classList.remove('hidden');
+                if (verMaisBtn) {
+                    verMaisBtn.textContent = `Ver todos os ${todos.length} aniversariantes →`;
+                    // Remove listener antigo para não acumular
+                    verMaisBtn.replaceWith(verMaisBtn.cloneNode(true));
+                    document.getElementById('aniversariantes-ver-mais-btn')
+                        .addEventListener('click', () => renderTodosAniversariantes(todos));
+                }
+            } else {
+                if (verMais) verMais.classList.add('hidden');
+            }
+
         } catch(e) {
             console.error(e);
             listEl.innerHTML = '<p class="text-sm text-red-500">Erro ao carregar.</p>';
+        }
+    }
+
+    function renderTodosAniversariantes(todos) {
+        const listEl = document.getElementById('aniversariantes-list');
+        const verMais = document.getElementById('aniversariantes-ver-mais');
+        const verMaisBtn = document.getElementById('aniversariantes-ver-mais-btn');
+        const diaHoje = new Date().getDate();
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+        todos.forEach(c => {
+            const dia = c.dob.split('-')[2];
+            const hoje = parseInt(dia, 10) === diaHoje;
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer' + (hoje ? ' bg-yellow-50' : '');
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'font-medium text-gray-700 text-sm truncate mr-2';
+            nameSpan.textContent = c.name + (hoje ? ' 🎂' : '');
+            const diaSpan = document.createElement('span');
+            diaSpan.className = 'font-bold text-blue-600 text-sm flex-shrink-0';
+            diaSpan.textContent = `dia ${dia}`;
+            item.appendChild(nameSpan);
+            item.appendChild(diaSpan);
+            item.addEventListener('click', () => openDetailsModal(c.id));
+            listEl.appendChild(item);
+        });
+
+        // Trocar botão por "recolher"
+        if (verMais) verMais.classList.remove('hidden');
+        if (verMaisBtn) {
+            verMaisBtn.replaceWith(verMaisBtn.cloneNode(true));
+            const novoBtn = document.getElementById('aniversariantes-ver-mais-btn');
+            novoBtn.textContent = '↑ Recolher';
+            novoBtn.addEventListener('click', () => updateAniversariantes());
         }
     }
     function updateDemandasRecentes() {
