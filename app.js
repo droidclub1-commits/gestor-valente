@@ -2229,12 +2229,24 @@ function closeMapModal() {
                 if (secao)  query = query.ilike('secao', `%${secao}%`);
                 query = query.order('zona', { ascending: true }).order('secao', { ascending: true }).order('name', { ascending: true });
 
-                const { data, error } = await query;
-                if (error) throw error;
+                // ── Paginação server-side: chunks de 1000, limite de segurança 5000 ──
+                let data = [];
+                let _lOffset = 0;
+                const _LPAGE = 1000;
+                const _LMAX  = 5000;
+                let _lTruncated = false;
+                while (true) {
+                    const { data: chunk, error } = await query.range(_lOffset, _lOffset + _LPAGE - 1);
+                    if (error) throw error;
+                    data = [...data, ...(chunk || [])];
+                    if (!chunk || chunk.length < _LPAGE) break;
+                    _lOffset += _LPAGE;
+                    if (data.length >= _LMAX) { _lTruncated = true; break; }
+                }
 
                 const liderNome = allLeaders.find(l => l.id === liderId)?.name || 'Liderança';
                 if (liderHeader) {
-                    liderHeader.innerHTML = `<span class="font-semibold text-blue-800">Liderança: ${liderNome}</span> <span class="text-blue-600 ml-2">${(data||[]).length} cidadão(s) com zona/seção cadastrada</span>`;
+                    liderHeader.innerHTML = `<span class="font-semibold text-blue-800">Liderança: ${liderNome}</span> <span class="text-blue-600 ml-2">${(data||[]).length} cidadão(s) com zona/seção cadastrada</span>${_lTruncated ? ' <span class="text-orange-600 font-semibold ml-2">⚠️ Exibindo os primeiros 5.000 resultados — use filtros para refinar.</span>' : ''}`;
                 }
 
                 liderTbody.innerHTML = '';
@@ -2291,16 +2303,25 @@ function closeMapModal() {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">A carregar...</td></tr>';
                 if (empty) empty.classList.add('hidden');
 
-                let query = sb.from('cidadaos')
-                    .select('cidade, zona, secao, type')
-                    .not('zona', 'is', null)
-                    .not('zona', 'eq', '');
-                if (cidade) query = query.eq('cidade', cidade);
-                if (zona)   query = query.ilike('zona', `%${zona}%`);
-                if (secao)  query = query.ilike('secao', `%${secao}%`);
-
-                const { data, error } = await query;
-                if (error) throw error;
+                // ── Paginação server-side: chunks de 1000 para suportar 25k+ cadastros ──
+                let data = [];
+                let _offset = 0;
+                const _PAGE = 1000;
+                while (true) {
+                    let q = sb.from('cidadaos')
+                        .select('cidade, zona, secao, type')
+                        .not('zona', 'is', null)
+                        .not('zona', 'eq', '');
+                    if (cidade) q = q.eq('cidade', cidade);
+                    if (zona)   q = q.ilike('zona', `%${zona}%`);
+                    if (secao)  q = q.ilike('secao', `%${secao}%`);
+                    q = q.range(_offset, _offset + _PAGE - 1);
+                    const { data: chunk, error } = await q;
+                    if (error) throw error;
+                    data = [...data, ...(chunk || [])];
+                    if (!chunk || chunk.length < _PAGE) break;
+                    _offset += _PAGE;
+                }
 
                 if (!data || data.length === 0) {
                     tbody.innerHTML = '';
