@@ -3,8 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 // Mesma URL e anon key públicas usadas em app.js — não são segredo,
 // a proteção real é a senha verificada no servidor (Edge Function).
-const SUPABASE_URL = 'https://wpeefnrnckqxolbiehiq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwZWVmbnJuY2txeG9sYmllaGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzcyNzksImV4cCI6MjA3OTAxMzI3OX0.L67CaZ4tRhI-zHt8pdo-nsfRKen_sJ6WaGPZ0I0aCpM';
+const SUPABASE_URL = 'https://memsmrsntvkneyylggto.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbXNtcnNudHZrbmV5eWxnZ3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjgyMjgsImV4cCI6MjA4NzIwNDIyOH0.QoyF_On4xNjCjfgXcXH2ycBzVdDP8GoOY66mBsdJW1M';
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/public-cadastro`;
 
 // Senha fica só na memória desta aba — nunca é salva em localStorage
