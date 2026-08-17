@@ -62,36 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyMask('c-phone', '(99) 99999-9999');
     applyMask('c-cep', '99999-999');
 
-    // ── Preenchimento automático de endereço via CEP (ViaCEP) ──
-    const cepInput = document.getElementById('c-cep');
-    const logradouroInput = document.getElementById('c-logradouro');
-    const bairroInput = document.getElementById('c-bairro');
-    const cidadeInput = document.getElementById('c-cidade');
-    const estadoInput = document.getElementById('c-estado');
-    const numeroInput = document.getElementById('c-numero');
-
-    cepInput.addEventListener('blur', async (e) => {
-        const cep = e.target.value.replace(/\D/g, '');
-        if (cep.length !== 8) return;
-        try {
-            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            if (!response.ok) throw new Error('CEP não encontrado');
-            const data = await response.json();
-            if (data.erro) {
-                showToast('CEP não encontrado.', 'error');
-                return;
-            }
-            logradouroInput.value = data.logradouro || '';
-            bairroInput.value = data.bairro || '';
-            cidadeInput.value = data.localidade || '';
-            estadoInput.value = data.uf || '';
-            numeroInput.focus();
-        } catch (err) {
-            console.error(err);
-            showToast('Erro ao consultar o CEP.', 'error');
-        }
-    });
-
     const gatePage = document.getElementById('gate-page');
     const formPage = document.getElementById('form-page');
     const gateForm = document.getElementById('gate-form');
@@ -134,6 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<div class="spinner"></div>';
+
+        // "Indicado por" não tem coluna própria no banco — é anexado ao
+        // campo Complemento do endereço como observação de texto.
+        const complementoBase = v(document.getElementById('c-complemento').value);
+        const indicadoPor = v(document.getElementById('c-indicadopor').value);
+        let complementoFinal = complementoBase;
+        if (indicadoPor) {
+            complementoFinal = complementoBase
+                ? `${complementoBase} | Indicado por: ${indicadoPor}`
+                : `Indicado por: ${indicadoPor}`;
+        }
+
         const payload = {
             action: 'create',
             password: accessPassword,
@@ -147,13 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 profissao: v(document.getElementById('c-profissao').value),
                 cpf: v(document.getElementById('c-cpf').value),
                 rg: v(document.getElementById('c-rg').value),
+                zona: v(document.getElementById('c-zona').value),
+                secao: v(document.getElementById('c-secao').value),
                 phone: v(document.getElementById('c-phone').value),
                 whatsapp: document.getElementById('c-whatsapp').checked,
                 photourl: v(document.getElementById('c-photourl').value),
                 cep: v(document.getElementById('c-cep').value),
                 logradouro: v(document.getElementById('c-logradouro').value),
                 numero: v(document.getElementById('c-numero').value),
-                complemento: v(document.getElementById('c-complemento').value),
+                complemento: complementoFinal,
                 bairro: v(document.getElementById('c-bairro').value),
                 cidade: v(document.getElementById('c-cidade').value),
                 estado: v(document.getElementById('c-estado').value)
