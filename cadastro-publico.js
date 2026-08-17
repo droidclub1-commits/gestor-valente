@@ -129,8 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 profissao: v(document.getElementById('c-profissao').value),
                 cpf: v(document.getElementById('c-cpf').value),
                 rg: v(document.getElementById('c-rg').value),
-                zona: v(document.getElementById('c-zona').value),
-                secao: v(document.getElementById('c-secao').value),
                 phone: v(document.getElementById('c-phone').value),
                 whatsapp: document.getElementById('c-whatsapp').checked,
                 photourl: v(document.getElementById('c-photourl').value),
