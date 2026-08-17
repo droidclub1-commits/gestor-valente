@@ -1,14 +1,7 @@
-// ═══════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO
-// ═══════════════════════════════════════════════════════════════
-// Mesma URL e anon key públicas usadas em app.js — não são segredo,
-// a proteção real é a senha verificada no servidor (Edge Function).
 const SUPABASE_URL = 'https://memsmrsntvkneyylggto.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbXNtcnNudHZrbmV5eWxnZ3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjgyMjgsImV4cCI6MjA4NzIwNDIyOH0.QoyF_On4xNjCjfgXcXH2ycBzVdDP8GoOY66mBsdJW1M';
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/public-cadastro`;
 
-// Senha fica só na memória desta aba — nunca é salva em localStorage
-// nem escrita neste arquivo. Some ao recarregar a página.
 let accessPassword = null;
 
 function showToast(message, type = 'success') {
@@ -60,8 +53,37 @@ async function callFunction(payload) {
 document.addEventListener('DOMContentLoaded', () => {
     applyMask('c-cpf', '999.999.999-99');
     applyMask('c-phone', '(99) 99999-9999');
-    applyMask('c-voterid', '9999 9999 9999');
     applyMask('c-cep', '99999-999');
+
+    // ── Preenchimento automático de endereço via CEP (ViaCEP) ──
+    const cepInput = document.getElementById('c-cep');
+    const logradouroInput = document.getElementById('c-logradouro');
+    const bairroInput = document.getElementById('c-bairro');
+    const cidadeInput = document.getElementById('c-cidade');
+    const estadoInput = document.getElementById('c-estado');
+    const numeroInput = document.getElementById('c-numero');
+
+    cepInput.addEventListener('blur', async (e) => {
+        const cep = e.target.value.replace(/\D/g, '');
+        if (cep.length !== 8) return;
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            if (!response.ok) throw new Error('CEP não encontrado');
+            const data = await response.json();
+            if (data.erro) {
+                showToast('CEP não encontrado.', 'error');
+                return;
+            }
+            logradouroInput.value = data.logradouro || '';
+            bairroInput.value = data.bairro || '';
+            cidadeInput.value = data.localidade || '';
+            estadoInput.value = data.uf || '';
+            numeroInput.focus();
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao consultar o CEP.', 'error');
+        }
+    });
 
     const gatePage = document.getElementById('gate-page');
     const formPage = document.getElementById('form-page');
@@ -118,9 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 profissao: v(document.getElementById('c-profissao').value),
                 cpf: v(document.getElementById('c-cpf').value),
                 rg: v(document.getElementById('c-rg').value),
-                voterid: v(document.getElementById('c-voterid').value),
-                zona: v(document.getElementById('c-zona').value),
-                secao: v(document.getElementById('c-secao').value),
                 phone: v(document.getElementById('c-phone').value),
                 whatsapp: document.getElementById('c-whatsapp').checked,
                 photourl: v(document.getElementById('c-photourl').value),
