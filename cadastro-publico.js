@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO
-// ═══════════════════════════════════════════════════════════════
-// Mesma URL e anon key públicas usadas em app.js — não são segredo,
-// a proteção real é a senha verificada no servidor (Edge Function).
 const SUPABASE_URL = 'https://memsmrsntvkneyylggto.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbXNtcnNudHZrbmV5eWxnZ3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjgyMjgsImV4cCI6MjA4NzIwNDIyOH0.QoyF_On4xNjCjfgXcXH2ycBzVdDP8GoOY66mBsdJW1M';
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/public-cadastro`;
