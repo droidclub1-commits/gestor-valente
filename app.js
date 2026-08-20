@@ -28,7 +28,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     modalContent, cidadaoDetailsModal, demandaModal, demandaDetailsModal,
     mapModal, confirmationModal, cidadaoForm, demandaForm, addNoteForm,
     searchInput, filterType, filterBairro, filterCidade, filterLeader, filterSexo,
-    filterFaixaEtaria, clearFiltersBtn, generateReportBtn, viewMapBtn,
+    filterFaixaEtaria, filterLocalTrabalho, clearFiltersBtn, generateReportBtn, viewMapBtn,
     demandaFilterStatus, demandaFilterLeader, demandaSearchNome, demandaClearFiltersBtn,
     cidadaosGrid, allDemandasList, cidadaoLeaderSelect, demandaCidadaoSelect,
     cancelDeleteBtn, confirmDeleteBtn, cidadaoName, cidadaoEmail, cidadaoDob,
@@ -144,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterLeader = document.getElementById('filter-leader');
         filterSexo = document.getElementById('filter-sexo');
         filterFaixaEtaria = document.getElementById('filter-faixa-etaria');
+        filterLocalTrabalho = document.getElementById('filter-local-trabalho');
         clearFiltersBtn = document.getElementById('clear-filters-btn');
         generateReportBtn = document.getElementById('generate-report-btn');
         viewMapBtn = document.getElementById('view-map-btn');
@@ -252,6 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
         filterLeader.addEventListener('change', () => renderCidadaos());
         filterSexo.addEventListener('change', () => renderCidadaos());
         filterFaixaEtaria.addEventListener('change', () => renderCidadaos());
+        let filterLocalTrabalhoDebounce;
+        filterLocalTrabalho.addEventListener('input', () => {
+            clearTimeout(filterLocalTrabalhoDebounce);
+            filterLocalTrabalhoDebounce = setTimeout(() => renderCidadaos(), 350);
+        });
         clearFiltersBtn.addEventListener('click', clearCidadaoFilters);
         loadMoreBtn.addEventListener('click', renderMoreCidadaos);
         demandaFilterStatus.addEventListener('change', () => loadDemandasPage(true));
@@ -311,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // ── PERFORMANCE: controle de estado de busca server-side ──────────────────
-    let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '' };
+    let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '', localTrabalho: '' };
 
     // ── Paginação server-side de demandas ─────────────────────────────────
     const DEMANDAS_PAGE_SIZE = 15;
@@ -427,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
+        if (s.localTrabalho) query = query.ilike('localtrabalho', `%${s.localTrabalho}%`);
 
         // Faixa etária: calcula intervalo de datas no servidor
         if (s.faixaEtaria && s.faixaEtaria !== 'N/A') {
@@ -843,7 +850,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cidade:      filterCidade ? filterCidade.value : '',
             leader:      filterLeader.value,
             sexo:        filterSexo.value,
-            faixaEtaria: filterFaixaEtaria.value
+            faixaEtaria: filterFaixaEtaria.value,
+            localTrabalho: filterLocalTrabalho.value.trim()
         };
         loadCidadaosPage(true);
     }
@@ -1118,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterLeader.value = '';
         filterSexo.value = '';
         filterFaixaEtaria.value = '';
+        filterLocalTrabalho.value = '';
         renderCidadaos();
     }
     function clearDemandaFilters() {
@@ -1888,6 +1897,7 @@ function closeMapModal() {
         if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
+        if (s.localTrabalho) query = query.ilike('localtrabalho', `%${s.localTrabalho}%`);
         query = query.order('name', { ascending: true });
 
         const { data, error } = await query;
@@ -1926,6 +1936,7 @@ function closeMapModal() {
         if (s.cidade)  query = query.eq('cidade', s.cidade);
         if (s.leader)  query = query.eq('leader', s.leader);
         if (s.sexo)    query = query.eq('sexo', s.sexo);
+        if (s.localTrabalho) query = query.ilike('localtrabalho', `%${s.localTrabalho}%`);
         query = query.order('name', { ascending: true });
 
         const { data, error } = await query;
