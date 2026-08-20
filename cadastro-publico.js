@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sexo: document.getElementById('c-sexo').value || null,
                 type: document.getElementById('c-type').value || 'Outro',
                 cpf: v(document.getElementById('c-cpf').value),
+                localtrabalho: v(document.getElementById('c-escola').value),
                 phone: v(document.getElementById('c-phone').value),
                 whatsapp: document.getElementById('c-whatsapp').checked,
                 cep: v(document.getElementById('c-cep').value),
